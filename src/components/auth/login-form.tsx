@@ -13,7 +13,6 @@ import {
 import { Logo } from "../icons";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Separator } from "../ui/separator";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -67,12 +66,12 @@ export function LoginForm() {
                 <Input id="password" type="password" />
             </div>
         </div>
-        <Link href="/dashboard" className="w-full">
-            <Button className="w-full">
+        <Button asChild className="w-full">
+            <Link href="/dashboard" >
                 <Mail className="mr-2 h-5 w-5" />
                 Sign in with Email
-            </Button>
-        </Link>
+            </Link>
+        </Button>
 
         <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -85,18 +84,18 @@ export function LoginForm() {
             </div>
         </div>
 
-        <Link href="/dashboard" className="w-full">
-            <Button className="w-full" variant="outline">
+        <Button asChild className="w-full" variant="outline">
+            <Link href="/dashboard" >
                 <GoogleIcon className="mr-2" />
                 Sign in with Google
-            </Button>
-        </Link>
-        <Link href="/dashboard" className="w-full">
-            <Button className="w-full">
-            <Fingerprint className="mr-2 h-5 w-5" />
-            Sign in with Biometrics
-            </Button>
-        </Link>
+            </Link>
+        </Button>
+        <Button asChild className="w-full">
+            <Link href="/dashboard">
+                <Fingerprint className="mr-2 h-5 w-5" />
+                Sign in with Biometrics
+            </Link>
+        </Button>
       </CardContent>
       <CardFooter className="flex-col gap-2 text-center text-xs text-muted-foreground">
         <p>
