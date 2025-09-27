@@ -1,3 +1,4 @@
+'use client';
 import {
     Table,
     TableBody,
@@ -14,13 +15,45 @@ import {
     CardTitle,
   } from "@/components/ui/card"
   import { Button } from "@/components/ui/button"
-  import { mockReports } from "@/lib/data"
   import { Badge } from "@/components/ui/badge"
   import { File, PlusCircle } from "lucide-react"
   import Link from "next/link"
   import { format, parseISO } from "date-fns"
+  import { useAuth } from "@/hooks/use-auth";
+  import { useState, useEffect } from "react";
+  import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+  import { db } from "@/lib/firebase";
+  import type { Report } from "@/lib/types";
+  import { UploadReportDialog } from "@/components/reports/upload-report-dialog";
   
   export default function ReportsPage() {
+    const { user } = useAuth();
+    const [reports, setReports] = useState<Report[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (!user) return;
+
+        setLoading(true);
+        const q = query(
+            collection(db, "reports"), 
+            where("patientId", "==", user.uid),
+            orderBy("uploadedAt", "desc")
+        );
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const reportsData: Report[] = [];
+            querySnapshot.forEach((doc) => {
+                reportsData.push({ id: doc.id, ...doc.data() } as Report);
+            });
+            setReports(reportsData);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
     return (
         <div className="flex flex-col gap-8">
             <div className="flex items-center justify-between">
@@ -32,7 +65,7 @@ import {
                     A list of your uploaded and analyzed medical reports.
                     </p>
                 </div>
-                <Button>
+                <Button onClick={() => setIsUploadDialogOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Upload Report
                 </Button>
@@ -42,7 +75,7 @@ import {
                 <CardHeader>
                     <CardTitle>Your Documents</CardTitle>
                     <CardDescription>
-                        {mockReports.length} reports found.
+                        {loading ? 'Loading reports...' : `${reports.length} reports found.`}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -59,39 +92,56 @@ import {
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {mockReports.map((report) => {
-                            const abnormalCount = report.extractedValues.filter(v => v.status === 'abnormal').length;
-                            return (
-                                <TableRow key={report.id}>
-                                    <TableCell className="font-medium">
-                                        <div className="flex items-center gap-2">
-                                            <File className="h-4 w-4 text-muted-foreground"/>
-                                            {report.name}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={abnormalCount > 0 ? "destructive" : "secondary"} className={abnormalCount > 0 ? "" : "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"}>
-                                            {abnormalCount > 0 ? "Action Required" : "Normal"}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">
-                                        {abnormalCount}
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">
-                                        {format(parseISO(report.uploadedAt), "MMMM d, yyyy")}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Link href={`/reports/${report.id}`}>
-                                            <Button variant="outline" size="sm">View Analysis</Button>
-                                        </Link>
+                        {loading ? (
+                            Array.from({length: 3}).map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell colSpan={5} className="text-center p-4">
+                                        <div className="h-8 bg-muted rounded-md animate-pulse"></div>
                                     </TableCell>
                                 </TableRow>
-                            )
-                        })}
+                            ))
+                        ) : reports.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center p-8 text-muted-foreground">
+                                    You haven&apos;t uploaded any reports yet.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            reports.map((report) => {
+                                const abnormalCount = report.extractedValues.filter(v => v.status === 'abnormal').length;
+                                return (
+                                    <TableRow key={report.id}>
+                                        <TableCell className="font-medium">
+                                            <div className="flex items-center gap-2">
+                                                <File className="h-4 w-4 text-muted-foreground"/>
+                                                {report.name}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={abnormalCount > 0 ? "destructive" : "secondary"} className={abnormalCount > 0 ? "" : "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"}>
+                                                {abnormalCount > 0 ? "Action Required" : "Normal"}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">
+                                            {abnormalCount}
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">
+                                            {format(parseISO(report.uploadedAt), "MMMM d, yyyy")}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Link href={`/reports/${report.id}`}>
+                                                <Button variant="outline" size="sm">View Analysis</Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })
+                        )}
                         </TableBody>
                     </Table>
                 </CardContent>
             </Card>
+            <UploadReportDialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen} />
         </div>
     )
   }

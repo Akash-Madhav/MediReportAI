@@ -1,6 +1,5 @@
 'use client';
 
-import { mockReports } from "@/lib/data";
 import { notFound } from "next/navigation";
 import {
     Card,
@@ -15,17 +14,21 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Report } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// In a real app, this would fetch data from a DB
+
 async function getReport(id: string) {
-    const report = mockReports.find((r) => r.id === id);
-    if (!report) {
+    const docRef = doc(db, "reports", id);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
       notFound();
     }
-    return report;
+    return { id: docSnap.id, ...docSnap.data() } as Report;
 }
 
 const statusVariantMap: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
@@ -40,14 +43,43 @@ const statusColorMap: { [key: string]: string } = {
 
 export default function ReportDetailPage({ params }: { params: { id: string } }) {
     const { displayUser } = useAuth();
-    const [report, setReport] = React.useState<Awaited<ReturnType<typeof getReport>> | null>(null);
+    const [report, setReport] = useState<Report | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    React.useEffect(() => {
-        getReport(params.id).then(setReport);
+    useEffect(() => {
+        if (params.id) {
+            getReport(params.id).then(data => {
+                setReport(data);
+                setLoading(false);
+            }).catch(() => {
+                setLoading(false);
+                notFound();
+            })
+        }
     }, [params.id]);
 
 
-    if (!report || !displayUser) return <div>Loading...</div>;
+    if (loading || !report || !displayUser) return (
+        <div className="flex flex-col gap-8">
+            <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-10" />
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-80" />
+                </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8 items-start">
+                <div className="md:col-span-2">
+                    <Skeleton className="h-96 w-full" />
+                </div>
+                <div className="md:col-span-1 flex flex-col gap-8">
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                </div>
+            </div>
+             <Skeleton className="h-32 w-full" />
+        </div>
+    );
 
     return (
         <div className="flex flex-col gap-8">

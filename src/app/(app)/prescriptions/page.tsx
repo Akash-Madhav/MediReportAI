@@ -1,3 +1,4 @@
+'use client';
 import {
     Table,
     TableBody,
@@ -14,13 +15,45 @@ import {
     CardTitle,
   } from "@/components/ui/card"
   import { Button } from "@/components/ui/button"
-  import { mockPrescriptions } from "@/lib/data"
   import { Badge } from "@/components/ui/badge"
   import { ClipboardType, PlusCircle, CheckCircle, AlertTriangle } from "lucide-react"
   import Link from "next/link"
   import { format, parseISO } from "date-fns"
+  import { useAuth } from "@/hooks/use-auth";
+  import { useState, useEffect } from "react";
+  import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+  import { db } from "@/lib/firebase";
+  import type { Prescription } from "@/lib/types";
+import { UploadPrescriptionDialog } from "@/components/prescriptions/upload-prescription-dialog";
   
   export default function PrescriptionsPage() {
+    const { user } = useAuth();
+    const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (!user) return;
+
+        setLoading(true);
+        const q = query(
+            collection(db, "prescriptions"),
+            where("patientId", "==", user.uid),
+            orderBy("uploadedAt", "desc")
+        );
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const prescData: Prescription[] = [];
+            querySnapshot.forEach((doc) => {
+                prescData.push({ id: doc.id, ...doc.data() } as Prescription);
+            });
+            setPrescriptions(prescData);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
     return (
         <div className="flex flex-col gap-8">
             <div className="flex items-center justify-between">
@@ -32,7 +65,7 @@ import {
                     A list of your uploaded and analyzed prescriptions.
                     </p>
                 </div>
-                <Button>
+                <Button onClick={() => setIsUploadDialogOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Upload Prescription
                 </Button>
@@ -42,7 +75,7 @@ import {
                 <CardHeader>
                     <CardTitle>Your Prescriptions</CardTitle>
                     <CardDescription>
-                        {mockPrescriptions.length} prescriptions found.
+                        {loading ? 'Loading prescriptions...' : `${prescriptions.length} prescriptions found.`}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -59,43 +92,60 @@ import {
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {mockPrescriptions.map((presc) => {
-                            const interactionCount = presc.interactions.length;
-                            return (
-                                <TableRow key={presc.id}>
-                                    <TableCell className="font-medium">
-                                        <div className="flex items-center gap-2">
-                                            <ClipboardType className="h-4 w-4 text-muted-foreground"/>
-                                            {presc.name}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        {presc.medicines.map(m => m.name).join(', ')}
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">
-                                        {interactionCount > 0 ? 
-                                        <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                                            <AlertTriangle className="h-3 w-3" /> {interactionCount} Found
-                                        </Badge> : 
-                                        <Badge variant="secondary" className="flex items-center gap-1 w-fit bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
-                                            <CheckCircle className="h-3 w-3" /> None
-                                        </Badge>}
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">
-                                        {format(parseISO(presc.uploadedAt), "MMMM d, yyyy")}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Link href={`/prescriptions/${presc.id}`}>
-                                            <Button variant="outline" size="sm">View Analysis</Button>
-                                        </Link>
+                        {loading ? (
+                            Array.from({length: 3}).map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell colSpan={5} className="text-center p-4">
+                                        <div className="h-8 bg-muted rounded-md animate-pulse"></div>
                                     </TableCell>
                                 </TableRow>
-                            )
-                        })}
+                            ))
+                        ) : prescriptions.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center p-8 text-muted-foreground">
+                                    You haven&apos;t uploaded any prescriptions yet.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            prescriptions.map((presc) => {
+                                const interactionCount = presc.interactions.length;
+                                return (
+                                    <TableRow key={presc.id}>
+                                        <TableCell className="font-medium">
+                                            <div className="flex items-center gap-2">
+                                                <ClipboardType className="h-4 w-4 text-muted-foreground"/>
+                                                {presc.name}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {presc.medicines.map(m => m.name).join(', ')}
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">
+                                            {interactionCount > 0 ? 
+                                            <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                                                <AlertTriangle className="h-3 w-3" /> {interactionCount} Found
+                                            </Badge> : 
+                                            <Badge variant="secondary" className="flex items-center gap-1 w-fit bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
+                                                <CheckCircle className="h-3 w-3" /> None
+                                            </Badge>}
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">
+                                            {format(parseISO(presc.uploadedAt), "MMMM d, yyyy")}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Link href={`/prescriptions/${presc.id}`}>
+                                                <Button variant="outline" size="sm">View Analysis</Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })
+                        )}
                         </TableBody>
                     </Table>
                 </CardContent>
             </Card>
+            <UploadPrescriptionDialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen} />
         </div>
     )
   }

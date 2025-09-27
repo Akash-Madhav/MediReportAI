@@ -1,5 +1,4 @@
 'use client';
-import { mockPrescriptions } from "@/lib/data";
 import { notFound } from "next/navigation";
 import {
     Card,
@@ -15,28 +14,56 @@ import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Prescription } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-
-// In a real app, this would fetch data from a DB
-async function getPrescription(id: string) {
-    const presc = mockPrescriptions.find((p) => p.id === id);
-    if (!presc) {
-      notFound();
-    }
-    return presc;
-}
 
 export default function PrescriptionDetailPage({ params }: { params: { id: string } }) {
     const { displayUser } = useAuth();
-    const [presc, setPresc] = React.useState<Awaited<ReturnType<typeof getPrescription>> | null>(null);
+    const [presc, setPresc] = useState<Prescription | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    React.useEffect(() => {
-        getPrescription(params.id).then(setPresc);
+    useEffect(() => {
+        if (!params.id) return;
+        const fetchPrescription = async () => {
+            setLoading(true);
+            const docRef = doc(db, "prescriptions", params.id);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                setPresc({ id: docSnap.id, ...docSnap.data() } as Prescription);
+            } else {
+                notFound();
+            }
+            setLoading(false);
+        };
+
+        fetchPrescription();
     }, [params.id]);
 
 
-    if (!presc || !displayUser) return <div>Loading...</div>;
+    if (loading || !presc || !displayUser) return (
+        <div className="flex flex-col gap-8">
+            <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-10" />
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-80" />
+                </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8 items-start">
+                <div className="md:col-span-2">
+                    <Skeleton className="h-64 w-full" />
+                </div>
+                <div className="md:col-span-1">
+                    <Skeleton className="h-48 w-full" />
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="flex flex-col gap-8">

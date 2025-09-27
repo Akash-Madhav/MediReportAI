@@ -1,3 +1,4 @@
+'use client';
 import {
     Card,
     CardContent,
@@ -5,8 +6,59 @@ import {
     CardTitle,
   } from "@/components/ui/card"
 import { Activity, Syringe, Users } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth";
+import { useState, useEffect } from "react";
+import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Report, Prescription } from "@/lib/types";
   
   export function OverviewCards() {
+    const { user } = useAuth();
+    const [latestReport, setLatestReport] = useState<Report | null>(null);
+    const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
+
+    useEffect(() => {
+        if (!user) return;
+        
+        // Fetch latest report
+        const reportsQuery = query(
+            collection(db, "reports"),
+            where("patientId", "==", user.uid),
+            orderBy("uploadedAt", "desc"),
+            limit(1)
+        );
+        const unsubscribeReports = onSnapshot(reportsQuery, (snapshot) => {
+            if (!snapshot.empty) {
+                const reportDoc = snapshot.docs[0];
+                setLatestReport({ id: reportDoc.id, ...reportDoc.data() } as Report);
+            }
+        });
+
+        // Fetch active prescriptions (for simplicity, let's take latest 2)
+         const prescriptionsQuery = query(
+            collection(db, "prescriptions"),
+            where("patientId", "==", user.uid),
+            orderBy("uploadedAt", "desc"),
+            limit(2) // This is a simplification
+        );
+        const unsubscribePrescriptions = onSnapshot(prescriptionsQuery, (snapshot) => {
+             const prescData: Prescription[] = [];
+            snapshot.forEach((doc) => {
+                prescData.push({ id: doc.id, ...doc.data() } as Prescription);
+            });
+            setActivePrescriptions(prescData);
+        });
+
+        return () => {
+            unsubscribeReports();
+            unsubscribePrescriptions();
+        }
+
+    }, [user]);
+
+    const abnormalResultsCount = latestReport?.extractedValues.filter(v => v.status === 'abnormal').length ?? 0;
+    const interactionCount = activePrescriptions.reduce((acc, p) => acc + p.interactions.length, 0);
+
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -17,7 +69,7 @@ import { Activity, Syringe, Users } from "lucide-react"
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-destructive">3</div>
+                <div className={`text-2xl font-bold ${abnormalResultsCount > 0 ? 'text-destructive' : ''}`}>{abnormalResultsCount}</div>
                 <p className="text-xs text-muted-foreground">
                   From your latest report
                 </p>
@@ -31,9 +83,9 @@ import { Activity, Syringe, Users } from "lucide-react"
                 <Syringe className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2</div>
+                <div className="text-2xl font-bold">{activePrescriptions.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  1 interaction found
+                  {interactionCount} interaction{interactionCount !== 1 && 's'} found
                 </p>
               </CardContent>
             </Card>
