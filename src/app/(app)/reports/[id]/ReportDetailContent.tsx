@@ -51,28 +51,22 @@ export default function ReportDetailContent({id}: ReportDetailContentProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id && user) {
-      const getReport = async (reportId: string) => {
+    if (!id || !user) return;
+    const fetchReport = async () => {
         setLoading(true);
-        // Reports are now stored under a user-specific path
-        const docRef = ref(db, `reports/${user.uid}/${reportId}`);
+        // Fetch from the user-specific path
+        const docRef = ref(db, `reports/${user.uid}/${id}`);
         const docSnap = await get(docRef);
-        if (!docSnap.exists()) {
-          notFound();
+
+        if (docSnap.exists()) {
+            setReport({ id: docSnap.key, ...docSnap.val() } as Report);
         } else {
-          setReport({id: docSnap.key, ...docSnap.val()} as Report);
+            notFound();
         }
         setLoading(false);
-      };
+    };
 
-      getReport(id).catch(() => {
-        setLoading(false);
-        notFound();
-      });
-    } else if (!user) {
-        // Wait for user to be available, but if it's explicitly null (not loading), handle it.
-        setLoading(true);
-    }
+    fetchReport();
   }, [id, user]);
 
   if (loading || !report || !displayUser)
