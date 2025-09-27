@@ -11,7 +11,6 @@
 import {reportAi} from '@/ai/genkit';
 import {z} from 'genkit';
 import mammoth from 'mammoth';
-import pdf from 'pdf-parse';
 
 const ExtractMedicalDataInputSchema = z.object({
   reportText: z
@@ -54,7 +53,8 @@ const extractMedicalDataPrompt = reportAi.definePrompt({
   name: 'extractMedicalDataPrompt',
   input: {
     schema: z.object({
-      reportText: z.string(),
+      reportText: z.string().optional(),
+      reportDataUri: z.string().optional(),
     }),
   },
   output: {schema: ExtractMedicalDataOutputSchema},
@@ -63,7 +63,11 @@ const extractMedicalDataPrompt = reportAi.definePrompt({
   Apply reasoning to include only the most important and relevant information in the extracted values.
 
   Here is the medical report:
-  {{{reportText}}}
+  {{#if reportText}}
+    {{{reportText}}}
+  {{else}}
+    {{media url=reportDataUri}}
+  {{/if}}
 
   Please extract the key medical data from the report, focusing on specific test results and their corresponding values, units, reference ranges, and statuses.
   Return the extracted data in the following JSON format:
@@ -90,17 +94,15 @@ async function extractTextFromDataUri(dataUri: string): Promise<string> {
   const mimeType = metadata.split(':')[1].split(';')[0];
   const buffer = Buffer.from(base64Data, 'base64');
 
-  if (mimeType === 'application/pdf') {
-    const data = await pdf(buffer);
-    return data.text;
-  } else if (
+  if (
     mimeType ===
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ) {
     const result = await mammoth.extractRawText({buffer});
     return result.value;
   } else {
-    throw new Error(`Unsupported MIME type for text extraction: ${mimeType}`);
+    // For PDFs and other types, we will pass the data URI directly to the model
+    return '';
   }
 }
 
@@ -136,21 +138,28 @@ const extractMedicalDataFlow = reportAi.defineFlow(
     outputSchema: ExtractMedicalDataOutputSchema,
   },
   async input => {
-    let textToAnalyze = input.reportText;
+    let reportText: string | undefined = input.reportText;
+    let reportDataUri: string | undefined = input.reportDataUri;
 
-    if (!textToAnalyze && !input.reportDataUri) {
+    if (!reportText && !reportDataUri) {
         throw new Error('No report content provided. Please either paste text or upload a file.');
     }
-
-    if (input.reportDataUri) {
-        textToAnalyze = await extractTextFromDataUri(input.reportDataUri);
+    
+    // If a file is uploaded, handle it.
+    if (reportDataUri) {
+      // For DOCX, we extract text. For PDF, we'll pass the URI directly.
+      const text = await extractTextFromDataUri(reportDataUri);
+      if (text) {
+        reportText = text;
+        reportDataUri = undefined; // Unset data URI as we are using extracted text.
+      }
     }
     
-    if (!textToAnalyze) {
-        throw new Error('Could not extract text from the provided source.');
+    if (!reportText && !reportDataUri) {
+        throw new Error('Could not extract text or prepare data from the provided source.');
     }
 
-    const {output} = await withRetry(() => extractMedicalDataPrompt({ reportText: textToAnalyze! }));
+    const {output} = await withRetry(() => extractMedicalDataPrompt({ reportText, reportDataUri }));
     return output!;
   }
 );
