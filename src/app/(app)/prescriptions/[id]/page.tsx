@@ -1,4 +1,5 @@
-import { mockPrescriptions, mockUser } from "@/lib/data";
+'use client';
+import { mockPrescriptions } from "@/lib/data";
 import { notFound } from "next/navigation";
 import {
     Card,
@@ -13,6 +14,8 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useAuth } from "@/hooks/use-auth";
+import React from "react";
 
 
 // In a real app, this would fetch data from a DB
@@ -24,8 +27,16 @@ async function getPrescription(id: string) {
     return presc;
 }
 
-export default async function PrescriptionDetailPage({ params }: { params: { id: string } }) {
-    const presc = await getPrescription(params.id);
+export default function PrescriptionDetailPage({ params }: { params: { id: string } }) {
+    const { displayUser } = useAuth();
+    const [presc, setPresc] = React.useState<Awaited<ReturnType<typeof getPrescription>> | null>(null);
+
+    React.useEffect(() => {
+        getPrescription(params.id).then(setPresc);
+    }, [params.id]);
+
+
+    if (!presc || !displayUser) return <div>Loading...</div>;
 
     return (
         <div className="flex flex-col gap-8">
@@ -41,7 +52,7 @@ export default async function PrescriptionDetailPage({ params }: { params: { id:
                             {presc.name}
                         </h1>
                         <p className="text-muted-foreground">
-                            Analysis for {mockUser.displayName} uploaded on {format(parseISO(presc.uploadedAt), "MMM d, yyyy")}
+                            Analysis for {displayUser.displayName} uploaded on {format(parseISO(presc.uploadedAt), "MMM d, yyyy")}
                         </p>
                     </div>
                 </div>

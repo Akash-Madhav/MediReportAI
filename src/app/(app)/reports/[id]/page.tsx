@@ -1,4 +1,6 @@
-import { mockReports, mockUser } from "@/lib/data";
+'use client';
+
+import { mockReports } from "@/lib/data";
 import { notFound } from "next/navigation";
 import {
     Card,
@@ -14,6 +16,7 @@ import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hooks/use-auth";
 
 // In a real app, this would fetch data from a DB
 async function getReport(id: string) {
@@ -34,8 +37,16 @@ const statusColorMap: { [key: string]: string } = {
     abnormal: '',
 };
 
-export default async function ReportDetailPage({ params }: { params: { id: string } }) {
-    const report = await getReport(params.id);
+export default function ReportDetailPage({ params }: { params: { id: string } }) {
+    const { displayUser } = useAuth();
+    const [report, setReport] = React.useState<Awaited<ReturnType<typeof getReport>> | null>(null);
+
+    React.useEffect(() => {
+        getReport(params.id).then(setReport);
+    }, [params.id]);
+
+
+    if (!report || !displayUser) return <div>Loading...</div>;
 
     return (
         <div className="flex flex-col gap-8">
@@ -51,7 +62,7 @@ export default async function ReportDetailPage({ params }: { params: { id: strin
                             {report.name}
                         </h1>
                         <p className="text-muted-foreground">
-                            Analysis for {mockUser.displayName} uploaded on {format(parseISO(report.uploadedAt), "MMM d, yyyy")}
+                            Analysis for {displayUser.displayName} uploaded on {format(parseISO(report.uploadedAt), "MMM d, yyyy")}
                         </p>
                     </div>
                 </div>

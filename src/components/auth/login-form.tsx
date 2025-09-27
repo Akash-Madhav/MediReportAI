@@ -1,5 +1,11 @@
+'use client';
+
 import Link from "next/link";
 import { Atom, Mail } from "lucide-react";
+import { useState } from 'react';
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +19,7 @@ import {
 import { Logo } from "../icons";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -44,6 +51,42 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   }
 
 export function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      router.push('/dashboard');
+    } catch (error) {
+      console.error("Error during Google sign-in:", error);
+      toast({
+        variant: "destructive",
+        title: "Sign-in Failed",
+        description: "Could not sign in with Google. Please try again.",
+      });
+    }
+  };
+
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/dashboard');
+    } catch (error) {
+      console.error("Error during email sign-in:", error);
+      toast({
+        variant: "destructive",
+        title: "Sign-in Failed",
+        description: "Invalid email or password. Please try again.",
+      });
+    }
+  };
+
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
@@ -56,22 +99,20 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="grid gap-2">
+        <form onSubmit={handleEmailSignIn} className="grid gap-4">
             <div className="grid gap-1">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" />
+                <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="grid gap-1">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" />
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-        </div>
-        <Button asChild className="w-full">
-            <Link href="/dashboard">
+            <Button type="submit" className="w-full">
                 <Mail className="mr-2 h-5 w-5" />
                 Sign in with Email
-            </Link>
-        </Button>
+            </Button>
+        </form>
 
         <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -83,11 +124,9 @@ export function LoginForm() {
                 </span>
             </div>
         </div>
-        <Button asChild className="w-full" variant="outline">
-            <Link href="/dashboard">
-                <GoogleIcon className="mr-2" />
-                Sign in with Google
-            </Link>
+        <Button onClick={handleGoogleSignIn} className="w-full" variant="outline">
+            <GoogleIcon className="mr-2" />
+            Sign in with Google
         </Button>
       </CardContent>
       <CardFooter className="flex-col gap-2 text-center text-xs text-muted-foreground">
