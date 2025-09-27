@@ -37,7 +37,7 @@ export async function chatWithAi(
 const chatPrompt = ai.definePrompt({
   name: 'chatWithAiPrompt',
   input: {schema: ChatWithAiInputSchema},
-  output: {schema: z.string()},
+  output: {schema: z.string().nullable()},
   prompt: `You are a friendly and helpful AI medical assistant. Your role is to answer questions about a user's health based on the data they have provided.
 
   Here is the user's medical history. Use it as the primary source of truth to answer their questions.
