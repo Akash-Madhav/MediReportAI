@@ -61,8 +61,8 @@ export const mockPrescriptions: Prescription[] = [
     storagePath: '/uploads/prescriptions/mock-user-123/presc-001.jpg',
     uploadedAt: '2023-10-28T14:00:00Z',
     medicines: [
-      { name: 'Metformin', dosage: '500 mg', frequency: 'Twice daily', route: 'Oral' },
-      { name: 'Lisinopril', dosage: '10 mg', frequency: 'Once daily', route: 'Oral' },
+      { name: 'Metformin', dosage: '500 mg', frequency: 'Twice daily', route: 'Oral', reason: 'Controls blood sugar' },
+      { name: 'Lisinopril', dosage: '10 mg', frequency: 'Once daily', route: 'Oral', reason: 'Manages blood pressure' },
     ],
     interactions: [
       { drugA: 'Metformin', drugB: 'Lisinopril', severity: 'low', message: 'Monitor blood glucose levels, as ACE inhibitors like Lisinopril can enhance the blood-glucose-lowering effect of antidiabetic agents.' }
@@ -76,7 +76,7 @@ export const mockPrescriptions: Prescription[] = [
     storagePath: '/uploads/prescriptions/mock-user-123/presc-002.jpg',
     uploadedAt: '2023-04-02T11:00:00Z',
     medicines: [
-      { name: 'Cetirizine', dosage: '10 mg', frequency: 'Once daily as needed', route: 'Oral' },
+      { name: 'Cetirizine', dosage: '10 mg', frequency: 'Once daily as needed', route: 'Oral', reason: 'Manages allergy symptoms' },
     ],
     interactions: [],
     validatedBy: 'doc-456'
@@ -110,6 +110,7 @@ export const mockPharmacies: Pharmacy[] = [
         stock: [
             { medicineName: 'Metformin', available: true, lastUpdated: '2023-11-01T10:00:00Z'},
             { medicineName: 'Lisinopril', available: true, lastUpdated: '2023-11-01T10:00:00Z'},
+            { medicineName: 'Atorvastatin', available: false, lastUpdated: '2023-11-01T10:00:00Z'},
         ]
     },
     {
@@ -120,6 +121,7 @@ export const mockPharmacies: Pharmacy[] = [
         stock: [
             { medicineName: 'Metformin', available: false, lastUpdated: '2023-11-01T09:00:00Z'},
             { medicineName: 'Lisinopril', available: true, lastUpdated: '2023-11-01T09:00:00Z'},
+            { medicineName: 'Atorvastatin', available: true, lastUpdated: '2023-11-01T09:00:00Z'},
         ]
     },
      {
@@ -129,7 +131,8 @@ export const mockPharmacies: Pharmacy[] = [
         coords: { lat: 40.7484, lng: -73.9500 },
         stock: [
             { medicineName: 'Metformin', available: true, lastUpdated: '2023-10-31T15:00:00Z'},
-            { medicineName: 'Lisinopril', available: true, lastUpdated: '2023-10-31T15:00:00Z'},
+            { medicineName: 'Lisinopril', available: false, lastUpdated: '2023-10-31T15:00:00Z'},
+            { medicineName: 'Atorvastatin', available: true, lastUpdated: '2023-10-31T15:00:00Z'},
         ]
     }
 ]

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { mockPharmacies } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
-import { Navigation, MapPin, Check, X, Loader2 } from "lucide-react"
+import { Navigation, MapPin, Check, X, Loader2, Pill } from "lucide-react"
 import { useEffect, useState } from "react";
 import type { Pharmacy } from "@/lib/types";
 
@@ -27,6 +27,8 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distance in km
 };
+
+const medicinesToCheck = ['Metformin', 'Lisinopril', 'Atorvastatin'];
 
 export default function PharmaciesPage() {
     const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
@@ -137,16 +139,29 @@ export default function PharmaciesPage() {
                                         </Button>
                                     </div>
                                     <div className="mt-4 pt-4 border-t">
-                                        <p className="text-xs font-semibold mb-2 text-muted-foreground">Metformin Availability:</p>
-                                        {pharmacy.stock.find(s => s.medicineName === 'Metformin')?.available ? (
-                                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
-                                                <Check className="h-3 w-3 mr-1"/> In Stock
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="destructive">
-                                                <X className="h-3 w-3 mr-1"/> Out of Stock
-                                            </Badge>
-                                        )}
+                                        <p className="text-xs font-semibold mb-3 text-muted-foreground">Stock Availability:</p>
+                                        <div className="space-y-2">
+                                            {medicinesToCheck.map(medicine => {
+                                                const stockInfo = pharmacy.stock.find(s => s.medicineName === medicine);
+                                                return (
+                                                    <div key={medicine} className="flex items-center justify-between text-sm">
+                                                        <p className="flex items-center gap-2">
+                                                            <Pill className="h-4 w-4 text-muted-foreground" />
+                                                            {medicine}
+                                                        </p>
+                                                        {stockInfo?.available ? (
+                                                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
+                                                                <Check className="h-3 w-3 mr-1"/> In Stock
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="destructive">
+                                                                <X className="h-3 w-3 mr-1"/> Out of Stock
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                                 ))
