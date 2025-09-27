@@ -43,10 +43,9 @@ export async function findNearbyPharmacies(input: FindNearbyPharmaciesInput): Pr
 async function getMapmyIndiaToken(): Promise<string> {
     const clientId = process.env.MAPMYINDIA_CLIENT_ID;
     const clientSecret = process.env.MAPMYINDIA_CLIENT_SECRET;
-    const apiKey = process.env.MAPMYINDIA_API_KEY;
 
-    if (!clientId || !clientSecret || !apiKey) {
-        throw new Error('MapmyIndia credentials are not fully configured.');
+    if (!clientId || !clientSecret) {
+        throw new Error('MapmyIndia client credentials are not fully configured.');
     }
 
     const tokenUrl = 'https://outpost.mappls.com/api/security/oauth/token';
@@ -108,8 +107,8 @@ const findNearbyPharmaciesFlow = ai.defineFlow(
                 address: location.placeAddress,
                 distance: location.distance,
                 coords: {
-                    lat: location.latitude,
-                    lng: location.longitude,
+                    lat: location.lat,
+                    lng: location.lng,
                 }
             }));
 
