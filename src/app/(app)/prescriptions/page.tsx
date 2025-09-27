@@ -21,7 +21,7 @@ import {
   import { format, parseISO } from "date-fns"
   import { useAuth } from "@/hooks/use-auth";
   import { useState, useEffect } from "react";
-  import { ref, query, orderByChild, equalTo, onValue } from "firebase/database";
+  import { ref, onValue } from "firebase/database";
   import { db } from "@/lib/firebase";
   import type { Prescription } from "@/lib/types";
 import { UploadPrescriptionDialog } from "@/components/prescriptions/upload-prescription-dialog";
@@ -36,10 +36,10 @@ import { UploadPrescriptionDialog } from "@/components/prescriptions/upload-pres
         if (!user) return;
 
         setLoading(true);
-        const prescriptionsRef = ref(db, 'prescriptions');
-        const userPrescriptionsQuery = query(prescriptionsRef, orderByChild('patientId'), equalTo(user.uid));
+        // Fetch prescriptions from the user-specific path
+        const userPrescriptionsRef = ref(db, `prescriptions/${user.uid}`);
 
-        const unsubscribe = onValue(userPrescriptionsQuery, (snapshot) => {
+        const unsubscribe = onValue(userPrescriptionsRef, (snapshot) => {
             const data = snapshot.val();
             const prescData: Prescription[] = [];
             if (data) {

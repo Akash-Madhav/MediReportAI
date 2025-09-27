@@ -21,17 +21,17 @@ import type { Prescription } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
-export default function PrescriptionDetailPage({ params }: { params: { id: string } }) {
-    const { displayUser } = useAuth();
+export default function PrescriptionDetailPage({ params: { id } }: { params: { id: string } }) {
+    const { user, displayUser } = useAuth();
     const [presc, setPresc] = useState<Prescription | null>(null);
     const [loading, setLoading] = useState(true);
-    const { id } = params;
 
     useEffect(() => {
-        if (!id) return;
+        if (!id || !user) return;
         const fetchPrescription = async () => {
             setLoading(true);
-            const docRef = ref(db, `prescriptions/${id}`);
+            // Fetch from the user-specific path
+            const docRef = ref(db, `prescriptions/${user.uid}/${id}`);
             const docSnap = await get(docRef);
 
             if (docSnap.exists()) {
@@ -43,7 +43,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
         };
 
         fetchPrescription();
-    }, [id]);
+    }, [id, user]);
 
 
     if (loading || !presc || !displayUser) return (
