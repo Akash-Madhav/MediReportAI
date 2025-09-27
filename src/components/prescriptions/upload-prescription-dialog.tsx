@@ -142,7 +142,8 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                 const nameToSave = fileName.trim() || "Untitled Prescription";
                 
                 // Note: File storage is still simulated with 'storagePath'
-                const newPrescriptionRef = push(ref(db, `prescriptions`));
+                const userPrescriptionsRef = ref(db, `prescriptions/${user.uid}`);
+                const newPrescriptionRef = push(userPrescriptionsRef); 
                 
                 await set(newPrescriptionRef, {
                     name: nameToSave,
