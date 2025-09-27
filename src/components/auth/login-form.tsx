@@ -112,7 +112,7 @@ export function LoginForm({ variant = 'login' }: { variant?: 'login' | 'signup' 
         description = 'Invalid email or password. Please check your credentials and try again.';
       } else if (error.code === 'auth/email-already-in-use') {
         description = 'An account with this email already exists. Please sign in instead.';
-      } else {
+      } else if (error.message) {
         description = error.message;
       }
       
