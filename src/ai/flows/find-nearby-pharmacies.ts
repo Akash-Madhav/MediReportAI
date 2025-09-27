@@ -52,13 +52,12 @@ const findNearbyPharmaciesFlow = ai.defineFlow(
             throw new Error('MapmyIndia API key is not configured.');
         }
 
-        const url = `https://atlas.mappls.com/api/places/nearby/json?keywords=pharmacy&refLocation=${input.latitude},${input.longitude}`;
+        const url = `https://atlas.mappls.com/api/places/nearby/json?keywords=pharmacy&refLocation=${input.latitude},${input.longitude}&access_token=${apiKey}`;
         
         try {
             const response = await fetch(url, {
-                method: 'GET',
+                method: 'POST', // Changed to POST as per some MapmyIndia docs
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`,
                     'Content-Type': 'application/json',
                 },
             });
