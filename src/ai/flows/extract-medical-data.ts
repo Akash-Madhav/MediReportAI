@@ -14,7 +14,14 @@ import {z} from 'genkit';
 const ExtractMedicalDataInputSchema = z.object({
   reportText: z
     .string()
+    .optional()
     .describe('The text content of the medical report to be analyzed.'),
+  reportDataUri: z
+    .string()
+    .optional()
+    .describe(
+      "A medical report file, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+    ),
 });
 export type ExtractMedicalDataInput = z.infer<typeof ExtractMedicalDataInputSchema>;
 
@@ -49,8 +56,9 @@ const extractMedicalDataPrompt = ai.definePrompt({
   Your goal is to accurately and efficiently process medical information by identifying and extracting relevant data points.
   Apply reasoning to include only the most important and relevant information in the extracted values.
 
-  Here is the medical report text:
-  {{reportText}}
+  Here is the medical report:
+  {{#if reportText}}{{reportText}}{{/if}}
+  {{#if reportDataUri}}{{media url=reportDataUri}}{{/if}}
 
   Please extract the key medical data from the report, focusing on specific test results and their corresponding values, units, reference ranges, and statuses.
   Return the extracted data in the following JSON format:
