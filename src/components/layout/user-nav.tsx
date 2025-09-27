@@ -20,14 +20,22 @@ export function UserNav() {
   if (!displayUser) {
     return null;
   }
+  
+  const getInitials = (name: string | null) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.charAt(0).toUpperCase();
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={displayUser.photoURL ?? ""} alt={displayUser.displayName ?? "User"} />
-            <AvatarFallback>{displayUser.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+            <AvatarFallback>{getInitials(displayUser.displayName)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
