@@ -25,7 +25,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
     const { displayUser } = useAuth();
     const [presc, setPresc] = useState<Prescription | null>(null);
     const [loading, setLoading] = useState(true);
-    const id = params.id;
+    const { id } = params;
 
     useEffect(() => {
         if (!id) return;

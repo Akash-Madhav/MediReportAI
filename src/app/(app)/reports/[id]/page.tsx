@@ -22,15 +22,6 @@ import type { Report } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
-async function getReport(id: string) {
-    const docRef = ref(db, `reports/${id}`);
-    const docSnap = await get(docRef);
-    if (!docSnap.exists()) {
-      notFound();
-    }
-    return { id: docSnap.key, ...docSnap.val() } as Report;
-}
-
 const statusVariantMap: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
     normal: 'secondary',
     abnormal: 'destructive',
@@ -45,18 +36,27 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
     const { displayUser } = useAuth();
     const [report, setReport] = useState<Report | null>(null);
     const [loading, setLoading] = useState(true);
+    const { id } = params;
 
     useEffect(() => {
-        if (params.id) {
-            getReport(params.id).then(data => {
-                setReport(data);
+        if (id) {
+            const getReport = async (reportId: string) => {
+                setLoading(true);
+                const docRef = ref(db, `reports/${reportId}`);
+                const docSnap = await get(docRef);
+                if (!docSnap.exists()) {
+                  notFound();
+                }
+                setReport({ id: docSnap.key, ...docSnap.val() } as Report);
                 setLoading(false);
-            }).catch(() => {
+            }
+
+            getReport(id).catch(() => {
                 setLoading(false);
                 notFound();
             })
         }
-    }, [params.id]);
+    }, [id]);
 
 
     if (loading || !report || !displayUser) return (
