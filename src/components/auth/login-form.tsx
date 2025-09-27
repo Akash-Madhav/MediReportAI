@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Atom, Mail, User as UserIcon, Shield } from "lucide-react";
 import { useState } from 'react';
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,17 @@ export function LoginForm({ variant = 'login' }: { variant?: 'login' | 'signup' 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      // For Google Sign-in, we can default the role to 'patient' and save to firestore
+      // Or check if user exists first. For now, we'll just create/overwrite.
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        role: 'patient' 
+      });
       router.push('/dashboard');
     } catch (error) {
       console.error("Error during Google sign-in:", error);
@@ -83,8 +94,15 @@ export function LoginForm({ variant = 'login' }: { variant?: 'login' | 'signup' 
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCredential.user, { displayName: name });
-        // In a real app, you'd also save the role to Firestore or custom claims.
+        const user = userCredential.user;
+        await updateProfile(user, { displayName: name });
+        // Save user info to firestore
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          displayName: name,
+          email: email,
+          role: role,
+        });
       }
       router.push('/dashboard');
     } catch (error: any) {
