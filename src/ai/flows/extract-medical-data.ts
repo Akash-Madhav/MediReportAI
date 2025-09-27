@@ -51,14 +51,18 @@ export async function extractMedicalData(input: ExtractMedicalDataInput): Promis
 
 const extractMedicalDataPrompt = ai.definePrompt({
   name: 'extractMedicalDataPrompt',
-  input: {schema: z.object({ reportText: z.string() }) },
+  input: {schema: ExtractMedicalDataInputSchema},
   output: {schema: ExtractMedicalDataOutputSchema},
   prompt: `You are an AI assistant specialized in extracting key medical data from reports.
   Your goal is to accurately and efficiently process medical information by identifying and extracting relevant data points.
   Apply reasoning to include only the most important and relevant information in the extracted values.
 
   Here is the medical report:
-  {{{reportText}}}
+  {{#if reportText}}
+    {{{reportText}}}
+  {{else}}
+    {{media url=reportDataUri}}
+  {{/if}}
 
   Please extract the key medical data from the report, focusing on specific test results and their corresponding values, units, reference ranges, and statuses.
   Return the extracted data in the following JSON format:
@@ -85,18 +89,14 @@ async function extractTextFromDataUri(dataUri: string): Promise<string> {
     const mimeType = metadata.split(':')[1].split(';')[0];
     const buffer = Buffer.from(base64Data, 'base64');
   
-    if (mimeType === 'application/pdf') {
-      const pdf = (await import('pdf-parse')).default;
-      const data = await pdf(buffer);
-      return data.text;
-    } else if (
+    if (
       mimeType ===
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ) {
       const result = await mammoth.extractRawText({ buffer });
       return result.value;
     } else {
-      throw new Error(`Unsupported MIME type: ${mimeType}`);
+      throw new Error(`Unsupported MIME type for text extraction: ${mimeType}`);
     }
 }
 
@@ -108,16 +108,24 @@ const extractMedicalDataFlow = ai.defineFlow(
   },
   async input => {
     let reportText = input.reportText;
+    let reportDataUri = input.reportDataUri;
 
     if (input.reportDataUri) {
-        reportText = await extractTextFromDataUri(input.reportDataUri);
+        const mimeType = input.reportDataUri.split(':')[1].split(';')[0];
+        if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            reportText = await extractTextFromDataUri(input.reportDataUri);
+            // We've extracted the text, so we don't need to send the data URI
+            reportDataUri = undefined;
+        } else if (mimeType !== 'application/pdf') {
+             throw new Error(`Unsupported file type: ${mimeType}. Please upload a PDF or DOCX.`);
+        }
     }
     
-    if (!reportText) {
+    if (!reportText && !reportDataUri) {
         throw new Error('No report content provided. Please either paste text or upload a file.');
     }
 
-    const {output} = await extractMedicalDataPrompt({ reportText });
+    const {output} = await extractMedicalDataPrompt({ reportText, reportDataUri });
     return output!;
   }
 );
