@@ -11,7 +11,6 @@ import {
   Bell,
   Stethoscope,
   MessageCircle,
-  Bot,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { cn } from '@/lib/utils';
@@ -22,7 +21,6 @@ const navItems = [
   { href: '/reports', icon: FileText, label: 'Reports', badge: 2 },
   { href: '/prescriptions', icon: ClipboardType, label: 'Prescriptions', badge: 1 },
   { href: '/pharmacies', icon: Map, label: 'Find Pharmacies' },
-  { href: '/chatbot', icon: Bot, label: 'Chatbot' },
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
