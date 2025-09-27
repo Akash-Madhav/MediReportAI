@@ -10,11 +10,21 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import mammoth from 'mammoth';
+import pdf from 'pdf-parse';
+
 
 const ExtractMedicalDataInputSchema = z.object({
   reportText: z
     .string()
+    .optional()
     .describe('The text content of the medical report to be analyzed.'),
+  reportDataUri: z
+    .string()
+    .optional()
+    .describe(
+      "A medical report file as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'. Supported types: PDF, DOCX."
+    ),
 });
 export type ExtractMedicalDataInput = z.infer<typeof ExtractMedicalDataInputSchema>;
 
@@ -43,7 +53,7 @@ export async function extractMedicalData(input: ExtractMedicalDataInput): Promis
 
 const extractMedicalDataPrompt = ai.definePrompt({
   name: 'extractMedicalDataPrompt',
-  input: {schema: ExtractMedicalDataInputSchema},
+  input: {schema: z.object({ reportText: z.string() }) },
   output: {schema: ExtractMedicalDataOutputSchema},
   prompt: `You are an AI assistant specialized in extracting key medical data from reports.
   Your goal is to accurately and efficiently process medical information by identifying and extracting relevant data points.
@@ -72,6 +82,25 @@ const extractMedicalDataPrompt = ai.definePrompt({
 `,
 });
 
+async function extractTextFromDataUri(dataUri: string): Promise<string> {
+    const [metadata, base64Data] = dataUri.split(',');
+    const mimeType = metadata.split(':')[1].split(';')[0];
+    const buffer = Buffer.from(base64Data, 'base64');
+  
+    if (mimeType === 'application/pdf') {
+      const data = await pdf(buffer);
+      return data.text;
+    } else if (
+      mimeType ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value;
+    } else {
+      throw new Error(`Unsupported MIME type: ${mimeType}`);
+    }
+}
+
 const extractMedicalDataFlow = ai.defineFlow(
   {
     name: 'extractMedicalDataFlow',
@@ -79,7 +108,17 @@ const extractMedicalDataFlow = ai.defineFlow(
     outputSchema: ExtractMedicalDataOutputSchema,
   },
   async input => {
-    const {output} = await extractMedicalDataPrompt(input);
+    let reportText = input.reportText;
+
+    if (input.reportDataUri) {
+        reportText = await extractTextFromDataUri(input.reportDataUri);
+    }
+    
+    if (!reportText) {
+        throw new Error('No report content provided. Please either paste text or upload a file.');
+    }
+
+    const {output} = await extractMedicalDataPrompt({ reportText });
     return output!;
   }
 );
