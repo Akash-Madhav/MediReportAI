@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { ref, onValue } from "firebase/database";
-import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Loader2, Send, User, Bot } from "lucide-react";
 import { chatWithAi } from "@/ai/flows/chat-with-ai";
-import type { Report, Prescription } from "@/lib/types";
 
 interface Message {
     role: 'user' | 'model';
@@ -26,35 +23,12 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
-    const [reportData, setReportData] = useState<Report[]>([]);
-    const [prescriptionData, setPrescriptionData] = useState<Prescription[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Fetch user's medical data on component mount
+    // Greet the user on component mount
     useEffect(() => {
-        if (!user) return;
-
-        const reportsRef = ref(db, `reports/${user.uid}`);
-        const prescriptionsRef = ref(db, `prescriptions/${user.uid}`);
-
-        const unsubscribeReports = onValue(reportsRef, (snapshot) => {
-            const data = snapshot.val();
-            setReportData(data ? Object.values(data) : []);
-        });
-
-        const unsubscribePrescriptions = onValue(prescriptionsRef, (snapshot) => {
-            const data = snapshot.val();
-            setPrescriptionData(data ? Object.values(data) : []);
-        });
-        
-        // Greet the user
-        setMessages([{ role: 'model', content: "Hello! I'm your AI Medical Assistant. How can I help you today? You can ask me questions about your uploaded reports and prescriptions."}])
-
-        return () => {
-            unsubscribeReports();
-            unsubscribePrescriptions();
-        };
-    }, [user]);
+        setMessages([{ role: 'model', content: "Hello! I'm your AI Assistant. How can I help you today?"}])
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,19 +41,15 @@ export default function ChatPage() {
         if (!input.trim() || !user) return;
 
         const userMessage: Message = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMessage]);
+        const newMessages: Message[] = [...messages, userMessage];
+        
+        setMessages(newMessages);
         setInput("");
         setLoading(true);
 
         try {
-            // Prepare context data
-            const summarizedReports = reportData.length > 0 ? reportData.map(r => `Report: ${r.name}, Uploaded: ${r.uploadedAt}, Summary: ${r.patientExplanation}`).join('\n') : "No reports available.";
-            const summarizedPrescriptions = prescriptionData.length > 0 ? prescriptionData.map(p => `Prescription: ${p.name}, Medicines: ${p.medicines.map(m => m.name).join(', ')}`).join('\n') : "No prescriptions available.";
-
             const aiResponse = await chatWithAi({
-                messages: [...messages, userMessage],
-                reportData: summarizedReports,
-                prescriptionData: summarizedPrescriptions
+                messages: newMessages,
             });
 
             setMessages(prev => [...prev, { role: 'model', content: aiResponse }]);
@@ -99,7 +69,7 @@ export default function ChatPage() {
                     Chat with AI
                 </h1>
                 <p className="text-muted-foreground">
-                    Ask questions about your health data.
+                    Ask questions and get answers from your AI assistant.
                 </p>
             </div>
             
@@ -140,7 +110,7 @@ export default function ChatPage() {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && !loading && handleSend()}
-                            placeholder="e.g., 'What were my last cholesterol results?'"
+                            placeholder="e.g., 'What are the side effects of paracetamol?'"
                             className="pr-12"
                             disabled={loading}
                         />

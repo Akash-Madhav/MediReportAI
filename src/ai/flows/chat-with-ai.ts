@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview An AI agent that can chat with the user about their medical data.
+ * @fileOverview An AI agent that can chat with the user.
  *
  * - chatWithAi - A function that handles the chat process.
  * - ChatWithAiInput - The input type for the chatWithAiInput function.
@@ -18,10 +18,6 @@ const MessageSchema = z.object({
 
 const ChatWithAiInputSchema = z.object({
   messages: z.array(MessageSchema).describe('The history of the conversation.'),
-  reportData: z.string().describe("The user's summarized medical report data."),
-  prescriptionData: z
-    .string()
-    .describe("The user's summarized prescription data."),
 });
 export type ChatWithAiInput = z.infer<typeof ChatWithAiInputSchema>;
 
@@ -38,26 +34,16 @@ const chatPrompt = ai.definePrompt({
   name: 'chatWithAiPrompt',
   input: {schema: ChatWithAiInputSchema},
   output: {schema: z.string().nullable()},
-  prompt: `You are a friendly and helpful AI medical assistant. Your role is to answer questions about a user's health based on the data they have provided.
+  prompt: `You are a friendly and helpful AI assistant.
 
-  Here is the user's medical history. Use it as the primary source of truth to answer their questions.
-  
-  SUMMARY OF MEDICAL REPORTS:
-  {{{reportData}}}
-  
-  SUMMARY OF PRESCRIPTIONS:
-  {{{prescriptionData}}}
-  
-  ---
-  
-  You are now in a conversation with the user.
+  You are in a conversation with a user.
   
   CONVERSATION HISTORY:
   {{#each messages}}
   - {{role}}: {{content}}
   {{/each}}
   
-  Based on the conversation history and the provided medical data, please provide a helpful and accurate response to the user's latest query.
+  Based on the conversation history, please provide a helpful and accurate response to the user's latest query.
   
   Answer the user's last message.
   `,
