@@ -8,7 +8,7 @@ import {
     CardTitle,
   } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill } from "lucide-react";
+import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -66,6 +66,7 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                     <Skeleton className="h-48 w-full" />
                 </div>
             </div>
+             <Skeleton className="h-48 w-full" />
         </div>
     );
 
@@ -158,6 +159,40 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                     </Card>
                 </div>
             </div>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle>Purchase Links</CardTitle>
+                    <CardDescription>Find your prescribed medication from online pharmacies. Prices may vary.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {presc.medicines.map((med, index) => (
+                        <div key={index} className="p-4 border rounded-lg">
+                            <h3 className="font-semibold flex items-center gap-2 mb-3">
+                                <Pill className="h-4 w-4 text-primary"/>
+                                {med.name}
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                <Button asChild variant="outline" size="sm">
+                                    <a href={`https://www.goodrx.com/${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
+                                        Search GoodRx <ExternalLink className="ml-2 h-3 w-3"/>
+                                    </a>
+                                </Button>
+                                <Button asChild variant="outline" size="sm">
+                                    <a href={`https://www.cvs.com/search?term=${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
+                                        Search CVS <ExternalLink className="ml-2 h-3 w-3"/>
+                                    </a>
+                                </Button>
+                                <Button asChild variant="outline" size="sm">
+                                    <a href={`https://www.walgreens.com/search/results.jsp?Ntt=${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
+                                        Search Walgreens <ExternalLink className="ml-2 h-3 w-3"/>
+                                    </a>
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
         </div>
     )
 }
