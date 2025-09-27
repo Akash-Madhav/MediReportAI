@@ -34,17 +34,10 @@ const chatPrompt = ai.definePrompt({
   name: 'chatWithAiPrompt',
   input: {schema: ChatWithAiInputSchema},
   output: {schema: z.string().nullable()},
-  prompt: `You are a powerful and versatile AI assistant, much like ChatGPT.
-Your goal is to provide accurate, helpful, and engaging responses to the user's queries.
-You can handle a wide range of topics, from answering general knowledge questions to helping with creative tasks.
-
-CONVERSATION HISTORY:
-{{#each messages}}
-- {{role}}: {{content}}
-{{/each}}
-
-Based on the conversation history, please provide a helpful and well-formatted response to the user's last message.
-`,
+  prompt: `You are a helpful and friendly AI assistant. Continue the conversation.`,
+  // By passing the messages array directly to the model,
+  // Genkit will format it correctly for a conversational chat.
+  messages: (input) => input.messages, 
 });
 
 const chatWithAiFlow = ai.defineFlow(
