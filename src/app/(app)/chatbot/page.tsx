@@ -15,6 +15,12 @@ interface ChatMessage {
   content: Part[];
 }
 
+const initialBotMessage: ChatMessage = {
+    role: 'model',
+    content: [{ text: "Hello! I'm your AI Medical Assistant. I can answer basic health questions. For any serious concerns, you should consult a doctor. How can I help you today?" }],
+};
+
+
 export default function ChatbotPage() {
   const { displayUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -30,20 +36,15 @@ export default function ChatbotPage() {
       content: [{ text: input }],
     };
     
-    // Add an initial greeting from the bot if it's the first message
-    const newMessages = messages.length === 0 ? [
-        { role: 'model' as const, content: [{ text: "Hello! I'm your AI Medical Assistant. I can answer basic health questions. For any serious concerns, you should consult a doctor. How can I help you today?" }]},
-        userMessage
-    ] : [...messages, userMessage];
-
-    const messagesForApi = [...messages, userMessage];
+    const newMessages = [...messages, userMessage];
 
     setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      const response = await chatbot({ messages: messagesForApi });
+      // The history sent to the API should only contain the actual conversation
+      const response = await chatbot({ messages: newMessages });
       const botMessage: ChatMessage = {
         role: 'model',
         content: [{ text: response }],
@@ -92,7 +93,9 @@ export default function ChatbotPage() {
                     Ask a basic medical question to get started.
                 </p>
             </div>
-          ) : messages.map((message, index) => (
+          ) : (
+            <>
+            {[initialBotMessage, ...messages].map((message, index) => (
             <div
               key={index}
               className={`flex items-start gap-4 ${
@@ -121,6 +124,8 @@ export default function ChatbotPage() {
               )}
             </div>
           ))}
+          </>
+          )}
            {isLoading && (
             <div className="flex items-start gap-4">
                 <Avatar className="h-9 w-9 border">
