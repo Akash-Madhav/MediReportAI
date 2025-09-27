@@ -174,16 +174,6 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                             </h3>
                             <div className="flex flex-wrap gap-2">
                                 <Button asChild variant="outline" size="sm">
-                                    <a href={`https://www.goodrx.com/${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
-                                        Search GoodRx <ExternalLink className="ml-2 h-3 w-3"/>
-                                    </a>
-                                </Button>
-                                <Button asChild variant="outline" size="sm">
-                                    <a href={`https://www.cvs.com/search?term=${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
-                                        Search CVS <ExternalLink className="ml-2 h-3 w-3"/>
-                                    </a>
-                                </Button>
-                                <Button asChild variant="outline" size="sm">
                                     <a href={`https://www.apollopharmacy.in/search-medicines/${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
                                         Search Apollo <ExternalLink className="ml-2 h-3 w-3"/>
                                     </a>
