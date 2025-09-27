@@ -32,11 +32,10 @@ const statusColorMap: { [key: string]: string } = {
     abnormal: '',
 };
 
-export default function ReportDetailPage({ params }: { params: { id: string } }) {
+export default function ReportDetailPage({ params: { id } }: { params: { id: string } }) {
     const { displayUser } = useAuth();
     const [report, setReport] = useState<Report | null>(null);
     const [loading, setLoading] = useState(true);
-    const { id } = params;
 
     useEffect(() => {
         if (id) {

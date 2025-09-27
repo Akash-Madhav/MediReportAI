@@ -21,15 +21,13 @@ import type { Prescription } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
-export default function PrescriptionDetailPage({ params }: { params: { id: string } }) {
+export default function PrescriptionDetailPage({ params: { id } }: { params: { id: string } }) {
     const { displayUser } = useAuth();
     const [presc, setPresc] = useState<Prescription | null>(null);
     const [loading, setLoading] = useState(true);
-    const { id } = params;
 
     useEffect(() => {
         if (!id) return;
-
         const fetchPrescription = async () => {
             setLoading(true);
             const docRef = ref(db, `prescriptions/${id}`);
