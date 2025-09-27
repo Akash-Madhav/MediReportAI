@@ -162,7 +162,7 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
             
             <Card>
                 <CardHeader>
-                    <CardTitle>Purchase Links</CardTitle>
+                    <CardTitle>Product Place Order Suggestion</CardTitle>
                     <CardDescription>Find your prescribed medication from online pharmacies. Prices may vary.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
