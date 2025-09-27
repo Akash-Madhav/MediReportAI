@@ -8,7 +8,7 @@
  * - ChatWithAiOutput - The return type for the chatWithAiInput function.
  */
 
-import {ai} from '@/ai/genkit';
+import {chatAi} from '@/ai/genkit';
 import {z} from 'zod';
 
 const MessageSchema = z.object({
@@ -30,7 +30,7 @@ export async function chatWithAi(
   return chatWithAiFlow(input);
 }
 
-const chatPrompt = ai.definePrompt({
+const chatPrompt = chatAi.definePrompt({
   name: 'chatWithAiPrompt',
   input: {schema: ChatWithAiInputSchema},
   output: {schema: z.string().nullable()},
@@ -40,7 +40,7 @@ const chatPrompt = ai.definePrompt({
   messages: (input) => input.messages, 
 });
 
-const chatWithAiFlow = ai.defineFlow(
+const chatWithAiFlow = chatAi.defineFlow(
   {
     name: 'chatWithAiFlow',
     inputSchema: ChatWithAiInputSchema,
