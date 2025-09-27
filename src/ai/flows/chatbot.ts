@@ -6,7 +6,7 @@
 
 import { chatAi } from '@/ai/genkit';
 import { z } from 'zod';
-import { Message, Part } from 'genkit/content';
+import { Message, Part } from 'genkit';
 
 // Schema for a single message part
 const PartSchema = z.object({

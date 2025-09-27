@@ -90,12 +90,12 @@ export default function ChatbotPage() {
                 <Bot className="h-12 w-12 mb-4" />
                 <h2 className="text-xl font-semibold">Start a Conversation</h2>
                 <p className="mt-2">
-                    Ask a basic medical question to get started.
+                    {initialBotMessage.content[0].text}
                 </p>
             </div>
           ) : (
             <>
-            {[initialBotMessage, ...messages].map((message, index) => (
+            {[...messages].map((message, index) => (
             <div
               key={index}
               className={`flex items-start gap-4 ${

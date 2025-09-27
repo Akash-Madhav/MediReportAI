@@ -1,3 +1,4 @@
+'use server';
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
@@ -13,7 +14,7 @@ export const prescriptionAi = genkit({
 
 
 export const chatAi = genkit({
-    plugins: [googleAI({apiKey: process.env.GEMINI_API_KEY})],
+    plugins: [googleAI({apiKey: process.env.GEMINI_API_KEY_REPORTS})],
     model: 'googleai/gemini-2.5-flash',
 });
 
