@@ -46,13 +46,17 @@ export default function PharmaciesPage() {
     }, [user]);
 
     const handleFetchAndSetPharmacies = async (latitude: number, longitude: number) => {
+        if (!user) return;
         setLoading(true);
         setError(null);
         try {
-            await findNearbyPharmacies({ latitude, longitude });
+            // The flow will now save to the DB itself.
+            await findNearbyPharmacies({ latitude, longitude, userId: user.uid });
+            
             // Now that data is in the DB, set up a listener
-            const pharmaciesRef = ref(db, `nearby_pharmacies/${user!.uid}`);
+            const pharmaciesRef = ref(db, `nearby_pharmacies/${user.uid}`);
             const snapshot = await get(pharmaciesRef);
+
             if (snapshot.exists()) {
               const data = snapshot.val();
               const pharmaciesWithKmDistance = (Object.values(data) as Omit<Pharmacy, 'id'>[]).map((p, i) => ({
@@ -71,6 +75,8 @@ export default function PharmaciesPage() {
             let errorMessage = "Could not fetch pharmacies. Please check API keys and try again.";
             if(apiError.message?.includes("401") || apiError.message?.includes("403")) {
               errorMessage = "Could not authenticate with MapmyIndia API. Please check your credentials and configuration.";
+            } else if (apiError.message?.includes("404")) {
+              errorMessage = "The pharmacy service endpoint could not be found. Please contact support.";
             }
             setError(errorMessage);
             setNearbyPharmacies([]);
@@ -81,8 +87,9 @@ export default function PharmaciesPage() {
     
     useEffect(() => {
         const initialize = async (latitude: number, longitude: number) => {
+            if(!user) return;
             // First check if data is already in DB for this user
-            const pharmaciesRef = ref(db, `nearby_pharmacies/${user!.uid}`);
+            const pharmaciesRef = ref(db, `nearby_pharmacies/${user.uid}`);
             const snapshot = await get(pharmaciesRef);
             if (snapshot.exists()) {
                 const data = snapshot.val();
