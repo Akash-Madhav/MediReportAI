@@ -61,6 +61,30 @@ const analyzePrescriptionPrompt = prescriptionAi.definePrompt({
   `,
 });
 
+// Helper function to retry a promise-based function with exponential backoff
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  let lastError: Error | undefined;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      // Check if it's a retryable "Service Unavailable" error
+      if (error.message && (error.message.includes('Service Unavailable') || error.message.includes('503'))) {
+        if (i < retries - 1) {
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+        }
+      } else {
+        // Not a retryable error, throw immediately
+        throw error;
+      }
+    }
+  }
+  // If all retries fail, throw the last error
+  throw lastError;
+}
+
 const analyzePrescriptionFlow = prescriptionAi.defineFlow(
   {
     name: 'analyzePrescriptionFlow',
@@ -68,7 +92,7 @@ const analyzePrescriptionFlow = prescriptionAi.defineFlow(
     outputSchema: AnalyzePrescriptionOutputSchema,
   },
   async input => {
-    const {output} = await analyzePrescriptionPrompt(input);
+    const {output} = await withRetry(() => analyzePrescriptionPrompt(input));
     return output!;
   }
 );
