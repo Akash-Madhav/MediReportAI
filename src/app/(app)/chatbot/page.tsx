@@ -17,12 +17,7 @@ interface ChatMessage {
 
 export default function ChatbotPage() {
   const { displayUser } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'model',
-      content: [{ text: "Hello! I'm your AI Medical Assistant. I can answer basic health questions. How can I help you today? Please remember, for any serious concerns, you should consult a doctor." }],
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,13 +29,21 @@ export default function ChatbotPage() {
       role: 'user',
       content: [{ text: input }],
     };
-    const newMessages = [...messages, userMessage];
+    
+    // Add an initial greeting from the bot if it's the first message
+    const newMessages = messages.length === 0 ? [
+        { role: 'model' as const, content: [{ text: "Hello! I'm your AI Medical Assistant. I can answer basic health questions. For any serious concerns, you should consult a doctor. How can I help you today?" }]},
+        userMessage
+    ] : [...messages, userMessage];
+
+    const messagesForApi = [...messages, userMessage];
+
     setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      const response = await chatbot({ messages: newMessages });
+      const response = await chatbot({ messages: messagesForApi });
       const botMessage: ChatMessage = {
         role: 'model',
         content: [{ text: response }],
@@ -81,7 +84,15 @@ export default function ChatbotPage() {
 
       <Card className="flex-1 flex flex-col">
         <CardContent className="flex-1 p-6 overflow-y-auto space-y-6">
-          {messages.map((message, index) => (
+          {messages.length === 0 ? (
+             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                <Bot className="h-12 w-12 mb-4" />
+                <h2 className="text-xl font-semibold">Start a Conversation</h2>
+                <p className="mt-2">
+                    Ask a basic medical question to get started.
+                </p>
+            </div>
+          ) : messages.map((message, index) => (
             <div
               key={index}
               className={`flex items-start gap-4 ${

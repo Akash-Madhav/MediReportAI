@@ -37,6 +37,7 @@ export async function chatbot(input: ChatbotInput): Promise<string> {
 
 const chatbotPrompt = chatAi.definePrompt(
   {
+    role:'user',
     name: 'chatbotPrompt',
     input: { schema: ChatbotInputSchema },
     output: { schema: z.string().nullable() },
