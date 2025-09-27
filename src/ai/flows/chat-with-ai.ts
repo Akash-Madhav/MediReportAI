@@ -4,8 +4,8 @@
  * @fileOverview An AI agent that can chat with the user about their medical data.
  *
  * - chatWithAi - A function that handles the chat process.
- * - ChatWithAiInput - The input type for the chatWithAi function.
- * - ChatWithAiOutput - The return type for the chatWithAi function.
+ * - ChatWithAiInput - The input type for the chatWithAiInput function.
+ * - ChatWithAiOutput - The return type for the chatWithAiInput function.
  */
 
 import {ai} from '@/ai/genkit';
@@ -71,6 +71,12 @@ const chatWithAiFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await chatPrompt(input);
-    return output!;
+    
+    // Handle cases where the model might return a null output.
+    if (output === null) {
+      return "I'm sorry, I couldn't generate a response. Could you please try rephrasing your question?";
+    }
+    
+    return output;
   }
 );
