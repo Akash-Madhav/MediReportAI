@@ -1,23 +1,30 @@
 'use client';
 
-import Image from "next/image"
+import dynamic from 'next/dynamic';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { mockPharmacies } from "@/lib/data"
-import { Badge } from "@/components/ui/badge"
-import { Navigation, MapPin, Check, X, Loader2, Pill } from "lucide-react"
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { mockPharmacies } from "@/lib/data";
+import { Badge } from "@/components/ui/badge";
+import { Navigation, MapPin, Check, X, Loader2, Pill } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { Pharmacy, Prescription } from "@/lib/types";
+import type { Pharmacy } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { onValue, ref } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { findNearbyPharmacies } from "@/ai/flows/find-nearby-pharmacies";
+import { Skeleton } from '@/components/ui/skeleton';
+
+const InteractiveMap = dynamic(() => import('@/components/pharmacies/interactive-map'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-[450px] md:h-full w-full" />,
+});
+
 
 export default function PharmaciesPage() {
     const { user } = useAuth();
@@ -26,7 +33,6 @@ export default function PharmaciesPage() {
     const [medicinesToCheck, setMedicinesToCheck] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [mapUrl, setMapUrl] = useState("https://picsum.photos/seed/map/1200/800");
 
      useEffect(() => {
         if (!user) return;
@@ -61,31 +67,19 @@ export default function PharmaciesPage() {
 
                 pharmaciesWithKmDistance.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
                 setNearbyPharmacies(pharmaciesWithKmDistance);
-                updateMapUrl({latitude, longitude}, pharmaciesWithKmDistance);
             } catch (apiError: any) {
                 console.error(apiError);
-                setError("Could not fetch pharmacies. Please check API keys and try again.");
+                let errorMessage = "Could not fetch pharmacies. Please check API keys and try again.";
+                if(apiError.message?.includes("401")) {
+                  errorMessage = "Could not authenticate with MapmyIndia API. Please check your credentials.";
+                }
+                setError(errorMessage);
                 setNearbyPharmacies([]); // Clear out any mock data
             } finally {
                 setLoading(false);
             }
         };
 
-        const updateMapUrl = (userCoords: {latitude: number, longitude: number}, pharmacies: Pharmacy[]) => {
-            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'REPLACE_WITH_YOUR_API_KEY';
-            if (apiKey === 'REPLACE_WITH_YOUR_API_KEY') {
-                setError(prev => `${prev || ''} Google Maps API key is missing.`);
-                setMapUrl("https://picsum.photos/seed/map-error/1200/800"); // Fallback
-                return;
-            }
-
-            let markers = `&markers=color:blue%7Clabel:Y%7C${userCoords.latitude},${userCoords.longitude}`;
-            pharmacies.slice(0, 5).forEach(p => {
-                markers += `&markers=color:red%7Clabel:P%7C${p.coords.lat},${p.coords.lng}`;
-            });
-            const newUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${userCoords.latitude},${userCoords.longitude}&zoom=14&size=1200x800&maptype=roadmap${markers}&key=${apiKey}`;
-            setMapUrl(newUrl);
-        }
 
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
@@ -95,13 +89,18 @@ export default function PharmaciesPage() {
                     fetchPharmacies(latitude, longitude);
                 },
                 (error) => {
-                    setError(`Error getting location: ${error.message}.`);
-                    setLoading(false);
+                    setError(`Error getting location: ${error.message}. Using mock location.`);
+                    // Fallback to a mock location if user denies permission
+                    const mockLocation = { latitude: 40.7128, longitude: -74.0060 };
+                    setUserLocation(mockLocation);
+                    fetchPharmacies(mockLocation.latitude, mockLocation.longitude);
                 }
             );
         } else {
-            setError("Geolocation is not supported by your browser.");
-            setLoading(false);
+            setError("Geolocation is not supported by your browser. Using mock location.");
+            const mockLocation = { latitude: 40.7128, longitude: -74.0060 };
+            setUserLocation(mockLocation);
+            fetchPharmacies(mockLocation.latitude, mockLocation.longitude);
         }
     }, []);
     
@@ -122,24 +121,17 @@ export default function PharmaciesPage() {
                         <CardHeader>
                             <CardTitle>Pharmacy Map</CardTitle>
                             <CardDescription>
-                                {loading ? "Finding your location and nearby pharmacies..." : error ? "Could not display map." : "Showing pharmacies in your area."}
+                                {loading ? "Finding your location and nearby pharmacies..." : error && nearbyPharmacies.length === 0 ? "Could not display map." : "Showing pharmacies in your area."}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="aspect-video w-full rounded-lg overflow-hidden relative bg-muted">
-                                <Image
-                                    src={mapUrl}
-                                    fill
-                                    style={{ objectFit: 'cover' }}
-                                    alt="Map of pharmacies"
-                                    className="filter dark:brightness-75 dark:contrast-125"
-                                    data-ai-hint="city map pharmacies"
-                                />
-                                 <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
-                                 <div className="absolute bottom-4 left-4 text-xs text-background/80 dark:text-foreground/50 p-1 bg-foreground/50 dark:bg-background/20 rounded">
-                                     Map data ©2024 Google. You are 'Y', Pharmacies are 'P'.
-                                 </div>
+                           {userLocation && <InteractiveMap userLocation={userLocation} pharmacies={nearbyPharmacies} />}
+                           {!userLocation && loading && <Skeleton className="h-[450px] md:h-full w-full" />}
+                           {error && nearbyPharmacies.length === 0 && (
+                            <div className="h-[450px] w-full flex items-center justify-center bg-muted rounded-lg">
+                                <p className="text-destructive text-center">{error}</p>
                             </div>
+                           )}
                         </CardContent>
                     </Card>
                 </div>
