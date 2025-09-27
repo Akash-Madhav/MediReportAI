@@ -8,7 +8,7 @@ import {
     CardTitle,
   } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill } from "lucide-react";
+import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,17 +20,21 @@ import { db } from "@/lib/firebase";
 import type { Prescription } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface PrescriptionDetailContentProps {
+    id: string;
+}
 
-export default function PrescriptionDetailPage({ params: { id } }: { params: { id: string } }) {
-    const { displayUser } = useAuth();
+export default function PrescriptionDetailContent({ id }: PrescriptionDetailContentProps) {
+    const { user, displayUser } = useAuth();
     const [presc, setPresc] = useState<Prescription | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!id) return;
+        if (!id || !user) return;
         const fetchPrescription = async () => {
             setLoading(true);
-            const docRef = ref(db, `prescriptions/${id}`);
+            // Fetch from the user-specific path
+            const docRef = ref(db, `prescriptions/${user.uid}/${id}`);
             const docSnap = await get(docRef);
 
             if (docSnap.exists()) {
@@ -42,7 +46,7 @@ export default function PrescriptionDetailPage({ params: { id } }: { params: { i
         };
 
         fetchPrescription();
-    }, [id]);
+    }, [id, user]);
 
 
     if (loading || !presc || !displayUser) return (
@@ -62,6 +66,7 @@ export default function PrescriptionDetailPage({ params: { id } }: { params: { i
                     <Skeleton className="h-48 w-full" />
                 </div>
             </div>
+             <Skeleton className="h-48 w-full" />
         </div>
     );
 
@@ -154,6 +159,30 @@ export default function PrescriptionDetailPage({ params: { id } }: { params: { i
                     </Card>
                 </div>
             </div>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle>Product Place Order Suggestion</CardTitle>
+                    <CardDescription>Find your prescribed medication from online pharmacies. Prices may vary.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {presc.medicines.map((med, index) => (
+                        <div key={index} className="p-4 border rounded-lg">
+                            <h3 className="font-semibold flex items-center gap-2 mb-3">
+                                <Pill className="h-4 w-4 text-primary"/>
+                                {med.name}
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                <Button asChild variant="outline" size="sm">
+                                    <a href={`https://www.apollopharmacy.in/search-medicines/${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
+                                        Search Apollo <ExternalLink className="ml-2 h-3 w-3"/>
+                                    </a>
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
         </div>
     )
 }
