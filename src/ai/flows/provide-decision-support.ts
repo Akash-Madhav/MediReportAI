@@ -8,7 +8,7 @@
  * - ProvideDecisionSupportOutput - The return type for the provideDecisionSupport function.
  */
 
-import {ai} from '@/ai/genkit';
+import {reportAi} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ProvideDecisionSupportInputSchema = z.object({
@@ -56,7 +56,7 @@ export async function provideDecisionSupport(input: ProvideDecisionSupportInput)
   return provideDecisionSupportFlow(input);
 }
 
-const prompt = ai.definePrompt({
+const prompt = reportAi.definePrompt({
   name: 'provideDecisionSupportPrompt',
   input: {schema: ProvideDecisionSupportInputSchema},
   output: {schema: ProvideDecisionSupportOutputSchema},
@@ -103,7 +103,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Pr
   throw lastError;
 }
 
-const provideDecisionSupportFlow = ai.defineFlow(
+const provideDecisionSupportFlow = reportAi.defineFlow(
   {
     name: 'provideDecisionSupportFlow',
     inputSchema: ProvideDecisionSupportInputSchema,

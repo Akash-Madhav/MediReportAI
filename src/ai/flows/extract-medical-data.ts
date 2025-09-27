@@ -8,7 +8,7 @@
  * - ExtractMedicalDataOutput - The return type for the extractMedicalData function.
  */
 
-import {ai} from '@/ai/genkit';
+import {reportAi} from '@/ai/genkit';
 import {z} from 'genkit';
 import mammoth from 'mammoth';
 
@@ -49,9 +49,14 @@ export async function extractMedicalData(input: ExtractMedicalDataInput): Promis
   return extractMedicalDataFlow(input);
 }
 
-const extractMedicalDataPrompt = ai.definePrompt({
+const extractMedicalDataPrompt = reportAi.definePrompt({
   name: 'extractMedicalDataPrompt',
-  input: {schema: ExtractMedicalDataInputSchema},
+  input: {
+    schema: z.object({
+      reportText: z.string().optional(),
+      reportDataUri: z.string().optional(),
+    }),
+  },
   output: {schema: ExtractMedicalDataOutputSchema},
   prompt: `You are an AI assistant specialized in extracting key medical data from reports.
   Your goal is to accurately and efficiently process medical information by identifying and extracting relevant data points.
@@ -124,7 +129,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Pr
   throw lastError;
 }
 
-const extractMedicalDataFlow = ai.defineFlow(
+const extractMedicalDataFlow = reportAi.defineFlow(
   {
     name: 'extractMedicalDataFlow',
     inputSchema: ExtractMedicalDataInputSchema,
@@ -133,6 +138,10 @@ const extractMedicalDataFlow = ai.defineFlow(
   async input => {
     let reportText = input.reportText;
     let reportDataUri = input.reportDataUri;
+
+    if (!reportText && !reportDataUri) {
+        throw new Error('No report content provided. Please either paste text or upload a file.');
+    }
 
     if (input.reportDataUri) {
         const mimeType = input.reportDataUri.split(':')[1].split(';')[0];
@@ -143,10 +152,6 @@ const extractMedicalDataFlow = ai.defineFlow(
         } else if (mimeType !== 'application/pdf') {
              throw new Error(`Unsupported file type: ${mimeType}. Please upload a PDF or DOCX.`);
         }
-    }
-    
-    if (!reportText && !reportDataUri) {
-        throw new Error('No report content provided. Please either paste text or upload a file.');
     }
     
     const {output} = await withRetry(() => extractMedicalDataPrompt({ reportText, reportDataUri }));

@@ -8,7 +8,7 @@
  * - AnalyzePrescriptionOutput - The return type for the analyzePrescription function.
  */
 
-import {ai} from '@/ai/genkit';
+import {prescriptionAi} from '@/ai/genkit';
 import {z} from 'zod';
 
 const AnalyzePrescriptionInputSchema = z.object({
@@ -47,7 +47,7 @@ export async function analyzePrescription(input: AnalyzePrescriptionInput): Prom
   return analyzePrescriptionFlow(input);
 }
 
-const analyzePrescriptionPrompt = ai.definePrompt({
+const analyzePrescriptionPrompt = prescriptionAi.definePrompt({
   name: 'analyzePrescriptionPrompt',
   input: {schema: AnalyzePrescriptionInputSchema},
   output: {schema: AnalyzePrescriptionOutputSchema},
@@ -61,7 +61,7 @@ const analyzePrescriptionPrompt = ai.definePrompt({
   `,
 });
 
-const analyzePrescriptionFlow = ai.defineFlow(
+const analyzePrescriptionFlow = prescriptionAi.defineFlow(
   {
     name: 'analyzePrescriptionFlow',
     inputSchema: AnalyzePrescriptionInputSchema,
