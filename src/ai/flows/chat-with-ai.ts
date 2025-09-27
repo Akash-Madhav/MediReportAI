@@ -34,19 +34,17 @@ const chatPrompt = ai.definePrompt({
   name: 'chatWithAiPrompt',
   input: {schema: ChatWithAiInputSchema},
   output: {schema: z.string().nullable()},
-  prompt: `You are a friendly and helpful AI assistant.
+  prompt: `You are a powerful and versatile AI assistant, much like ChatGPT.
+Your goal is to provide accurate, helpful, and engaging responses to the user's queries.
+You can handle a wide range of topics, from answering general knowledge questions to helping with creative tasks.
 
-  You are in a conversation with a user.
-  
-  CONVERSATION HISTORY:
-  {{#each messages}}
-  - {{role}}: {{content}}
-  {{/each}}
-  
-  Based on the conversation history, please provide a helpful and accurate response to the user's latest query.
-  
-  Answer the user's last message.
-  `,
+CONVERSATION HISTORY:
+{{#each messages}}
+- {{role}}: {{content}}
+{{/each}}
+
+Based on the conversation history, please provide a helpful and well-formatted response to the user's last message.
+`,
 });
 
 const chatWithAiFlow = ai.defineFlow(
