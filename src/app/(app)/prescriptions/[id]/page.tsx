@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth";
 import React, { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { ref, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import type { Prescription } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,11 +30,11 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
         if (!params.id) return;
         const fetchPrescription = async () => {
             setLoading(true);
-            const docRef = doc(db, "prescriptions", params.id);
-            const docSnap = await getDoc(docRef);
+            const docRef = ref(db, `prescriptions/${params.id}`);
+            const docSnap = await get(docRef);
 
             if (docSnap.exists()) {
-                setPresc({ id: docSnap.id, ...docSnap.data() } as Prescription);
+                setPresc({ id: docSnap.key, ...docSnap.val() } as Prescription);
             } else {
                 notFound();
             }
@@ -127,7 +127,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
                             <CardDescription>Potential interactions found.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {presc.interactions.length > 0 ? (
+                            {presc.interactions && presc.interactions.length > 0 ? (
                                 presc.interactions.map((interaction, i) => (
                                     <Alert key={i} variant="destructive">
                                         <AlertTriangle className="h-4 w-4" />

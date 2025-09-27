@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { extractMedicalData } from "@/ai/flows/extract-medical-data";
 import { provideDecisionSupport } from "@/ai/flows/provide-decision-support";
-import { addDoc, collection } from "firebase/firestore";
+import { ref, push, set } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
 
@@ -54,8 +54,11 @@ export function UploadReportDialog({ open, onOpenChange }: UploadReportDialogPro
                 patientInfo: patientInfo,
             });
 
-            // 3. Save everything to Firestore
-            await addDoc(collection(db, "reports"), {
+            // 3. Save everything to Realtime Database
+            const reportsRef = ref(db, 'reports');
+            const newReportRef = push(reportsRef);
+
+            await set(newReportRef, {
                 name: reportName,
                 patientId: user.uid,
                 uploadedAt: new Date().toISOString(),

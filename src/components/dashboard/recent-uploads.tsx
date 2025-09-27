@@ -12,7 +12,7 @@ import Link from "next/link"
 import { format, parseISO } from "date-fns"
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { ref, query, orderByChild, equalTo, limitToLast, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 import type { Report, Prescription } from "@/lib/types";
 
@@ -26,25 +26,33 @@ export function RecentUploads() {
         if (!user) return;
 
         const reportsQuery = query(
-            collection(db, "reports"),
-            where("patientId", "==", user.uid),
-            orderBy("uploadedAt", "desc"),
-            limit(2)
+            ref(db, "reports"),
+            orderByChild("patientId"),
+            equalTo(user.uid),
+            limitToLast(2)
         );
         const prescriptionsQuery = query(
-            collection(db, "prescriptions"),
-            where("patientId", "==", user.uid),
-            orderBy("uploadedAt", "desc"),
-            limit(2)
+            ref(db, "prescriptions"),
+            orderByChild("patientId"),
+            equalTo(user.uid),
+            limitToLast(2)
         );
 
-        const unsubscribeReports = onSnapshot(reportsQuery, (snapshot) => {
-            const reports = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'report' } as Upload));
+        const unsubscribeReports = onValue(reportsQuery, (snapshot) => {
+            const reports: Upload[] = [];
+            if(snapshot.exists()) {
+                const data = snapshot.val();
+                reports.push(...Object.keys(data).map(key => ({ ...data[key], id: key, type: 'report' } as Upload)));
+            }
             setRecentUploads(prev => [...reports, ...prev.filter(u => u.type !== 'report')].sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()).slice(0, 3));
         });
 
-        const unsubscribePrescriptions = onSnapshot(prescriptionsQuery, (snapshot) => {
-            const prescriptions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'prescription' } as Upload));
+        const unsubscribePrescriptions = onValue(prescriptionsQuery, (snapshot) => {
+            const prescriptions: Upload[] = [];
+            if(snapshot.exists()) {
+                const data = snapshot.val();
+                prescriptions.push(...Object.keys(data).map(key => ({ ...data[key], id: key, type: 'prescription' } as Upload)));
+            }
             setRecentUploads(prev => [...prescriptions, ...prev.filter(u => u.type !== 'prescription')].sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()).slice(0, 3));
         });
 

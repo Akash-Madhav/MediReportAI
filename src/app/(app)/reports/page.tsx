@@ -21,7 +21,7 @@ import {
   import { format, parseISO } from "date-fns"
   import { useAuth } from "@/hooks/use-auth";
   import { useState, useEffect } from "react";
-  import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+  import { ref, query, orderByChild, equalTo, onValue } from "firebase/database";
   import { db } from "@/lib/firebase";
   import type { Report } from "@/lib/types";
   import { UploadReportDialog } from "@/components/reports/upload-report-dialog";
@@ -36,17 +36,19 @@ import {
         if (!user) return;
 
         setLoading(true);
-        const q = query(
-            collection(db, "reports"), 
-            where("patientId", "==", user.uid),
-            orderBy("uploadedAt", "desc")
-        );
+        const reportsRef = ref(db, 'reports');
+        const userReportsQuery = query(reportsRef, orderByChild('patientId'), equalTo(user.uid));
 
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const unsubscribe = onValue(userReportsQuery, (snapshot) => {
+            const data = snapshot.val();
             const reportsData: Report[] = [];
-            querySnapshot.forEach((doc) => {
-                reportsData.push({ id: doc.id, ...doc.data() } as Report);
-            });
+            if (data) {
+                Object.keys(data).forEach((key) => {
+                    reportsData.push({ id: key, ...data[key] });
+                });
+            }
+             // Realtime DB doesn't support descending order, so we sort client-side
+            reportsData.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
             setReports(reportsData);
             setLoading(false);
         });

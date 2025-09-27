@@ -16,19 +16,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import React, { useEffect, useState } from 'react';
-import { doc, getDoc } from "firebase/firestore";
+import { ref, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import type { Report } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
 async function getReport(id: string) {
-    const docRef = doc(db, "reports", id);
-    const docSnap = await getDoc(docRef);
+    const docRef = ref(db, `reports/${id}`);
+    const docSnap = await get(docRef);
     if (!docSnap.exists()) {
       notFound();
     }
-    return { id: docSnap.id, ...docSnap.data() } as Report;
+    return { id: docSnap.key, ...docSnap.val() } as Report;
 }
 
 const statusVariantMap: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {

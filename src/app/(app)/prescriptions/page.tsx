@@ -21,7 +21,7 @@ import {
   import { format, parseISO } from "date-fns"
   import { useAuth } from "@/hooks/use-auth";
   import { useState, useEffect } from "react";
-  import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+  import { ref, query, orderByChild, equalTo, onValue } from "firebase/database";
   import { db } from "@/lib/firebase";
   import type { Prescription } from "@/lib/types";
 import { UploadPrescriptionDialog } from "@/components/prescriptions/upload-prescription-dialog";
@@ -36,17 +36,19 @@ import { UploadPrescriptionDialog } from "@/components/prescriptions/upload-pres
         if (!user) return;
 
         setLoading(true);
-        const q = query(
-            collection(db, "prescriptions"),
-            where("patientId", "==", user.uid),
-            orderBy("uploadedAt", "desc")
-        );
+        const prescriptionsRef = ref(db, 'prescriptions');
+        const userPrescriptionsQuery = query(prescriptionsRef, orderByChild('patientId'), equalTo(user.uid));
 
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const unsubscribe = onValue(userPrescriptionsQuery, (snapshot) => {
+            const data = snapshot.val();
             const prescData: Prescription[] = [];
-            querySnapshot.forEach((doc) => {
-                prescData.push({ id: doc.id, ...doc.data() } as Prescription);
-            });
+            if (data) {
+                Object.keys(data).forEach((key) => {
+                    prescData.push({ id: key, ...data[key] });
+                });
+            }
+            // Realtime DB doesn't support descending order, so we sort client-side
+            prescData.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
             setPrescriptions(prescData);
             setLoading(false);
         });
@@ -108,7 +110,7 @@ import { UploadPrescriptionDialog } from "@/components/prescriptions/upload-pres
                             </TableRow>
                         ) : (
                             prescriptions.map((presc) => {
-                                const interactionCount = presc.interactions.length;
+                                const interactionCount = presc.interactions?.length || 0;
                                 return (
                                     <TableRow key={presc.id}>
                                         <TableCell className="font-medium">

@@ -8,7 +8,7 @@ import {
 import { Activity, Syringe, Users } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { ref, query, orderByChild, equalTo, limitToLast, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 import type { Report, Prescription } from "@/lib/types";
   
@@ -22,30 +22,34 @@ import type { Report, Prescription } from "@/lib/types";
         
         // Fetch latest report
         const reportsQuery = query(
-            collection(db, "reports"),
-            where("patientId", "==", user.uid),
-            orderBy("uploadedAt", "desc"),
-            limit(1)
+            ref(db, "reports"),
+            orderByChild("patientId"),
+            equalTo(user.uid),
+            limitToLast(1)
         );
-        const unsubscribeReports = onSnapshot(reportsQuery, (snapshot) => {
-            if (!snapshot.empty) {
-                const reportDoc = snapshot.docs[0];
-                setLatestReport({ id: reportDoc.id, ...reportDoc.data() } as Report);
+        const unsubscribeReports = onValue(reportsQuery, (snapshot) => {
+            if (snapshot.exists()) {
+                const reportsData = snapshot.val();
+                const reportId = Object.keys(reportsData)[0];
+                setLatestReport({ id: reportId, ...reportsData[reportId] } as Report);
             }
         });
 
         // Fetch active prescriptions (for simplicity, let's take latest 2)
          const prescriptionsQuery = query(
-            collection(db, "prescriptions"),
-            where("patientId", "==", user.uid),
-            orderBy("uploadedAt", "desc"),
-            limit(2) // This is a simplification
+            ref(db, "prescriptions"),
+            orderByChild("patientId"),
+            equalTo(user.uid),
+            limitToLast(2) // This is a simplification
         );
-        const unsubscribePrescriptions = onSnapshot(prescriptionsQuery, (snapshot) => {
+        const unsubscribePrescriptions = onValue(prescriptionsQuery, (snapshot) => {
              const prescData: Prescription[] = [];
-            snapshot.forEach((doc) => {
-                prescData.push({ id: doc.id, ...doc.data() } as Prescription);
-            });
+             if (snapshot.exists()) {
+                const data = snapshot.val();
+                Object.keys(data).forEach(key => {
+                    prescData.push({ id: key, ...data[key] });
+                });
+             }
             setActivePrescriptions(prescData);
         });
 
@@ -57,7 +61,7 @@ import type { Report, Prescription } from "@/lib/types";
     }, [user]);
 
     const abnormalResultsCount = latestReport?.extractedValues.filter(v => v.status === 'abnormal').length ?? 0;
-    const interactionCount = activePrescriptions.reduce((acc, p) => acc + p.interactions.length, 0);
+    const interactionCount = activePrescriptions.reduce((acc, p) => acc + (p.interactions?.length || 0), 0);
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

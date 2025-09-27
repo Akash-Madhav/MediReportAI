@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { analyzePrescription } from "@/ai/flows/analyze-prescriptions";
-import { addDoc, collection } from "firebase/firestore";
+import { ref, push } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Loader2, UploadCloud } from "lucide-react";
 import Image from "next/image";
@@ -70,13 +70,16 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                 // Call the Genkit flow
                 const analysisResult = await analyzePrescription({ prescriptionDataUri });
                 
-                // Save to Firestore
-                await addDoc(collection(db, "prescriptions"), {
+                // Save to Realtime Database
+                const prescriptionsRef = ref(db, 'prescriptions');
+                const newPrescriptionRef = push(prescriptionsRef);
+                
+                await push(newPrescriptionRef, {
                     name: fileName || "Untitled Prescription",
                     patientId: user.uid,
                     uploadedAt: new Date().toISOString(),
                     medicines: analysisResult.medicines,
-                    interactions: analysisResult.interactions,
+                    interactions: analysisResult.interactions || [],
                     storagePath: 'simulated_path/' + file.name // In a real app, this would be a GCS path
                 });
 

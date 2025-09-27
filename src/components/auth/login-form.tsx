@@ -5,7 +5,7 @@ import { Atom, Mail, User as UserIcon, Shield } from "lucide-react";
 import { useState } from 'react';
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { ref, set } from "firebase/database";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -67,9 +67,8 @@ export function LoginForm({ variant = 'login' }: { variant?: 'login' | 'signup' 
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      // For Google Sign-in, we can default the role to 'patient' and save to firestore
-      // Or check if user exists first. For now, we'll just create/overwrite.
-      await setDoc(doc(db, "users", user.uid), {
+      // For Google Sign-in, we can default the role to 'patient' and save to database
+      await set(ref(db, `users/${user.uid}`), {
         uid: user.uid,
         displayName: user.displayName,
         email: user.email,
@@ -96,8 +95,8 @@ export function LoginForm({ variant = 'login' }: { variant?: 'login' | 'signup' 
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         await updateProfile(user, { displayName: name });
-        // Save user info to firestore
-        await setDoc(doc(db, "users", user.uid), {
+        // Save user info to database
+        await set(ref(db, `users/${user.uid}`), {
           uid: user.uid,
           displayName: name,
           email: email,
