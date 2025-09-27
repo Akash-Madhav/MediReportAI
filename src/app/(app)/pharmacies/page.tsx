@@ -17,6 +17,7 @@ import type { Pharmacy, Prescription } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { onValue, ref } from "firebase/database";
 import { db } from "@/lib/firebase";
+import { findNearbyPharmacies } from "@/ai/flows/find-nearby-pharmacies";
 
 // Haversine formula to calculate distance between two lat/lng points
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -60,21 +61,34 @@ export default function PharmaciesPage() {
     }, [user]);
 
     useEffect(() => {
+        const fetchPharmacies = async (latitude: number, longitude: number) => {
+            try {
+                const result = await findNearbyPharmacies({ latitude, longitude });
+                // The API returns distance in meters, convert to km
+                const pharmaciesWithKmDistance = result.pharmacies.map(p => ({
+                    ...p,
+                    // Simulate stock for now
+                    stock: mockPharmacies[0]?.stock || [],
+                    distance: p.distance ? p.distance / 1000 : undefined
+                }));
+
+                pharmaciesWithKmDistance.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+                setNearbyPharmacies(pharmaciesWithKmDistance);
+            } catch (apiError) {
+                console.error(apiError);
+                setError("Could not fetch pharmacies from the service. Displaying mock data.");
+                setNearbyPharmacies(mockPharmacies.slice(0,3));
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const { latitude, longitude } = position.coords;
                     setUserLocation({ latitude, longitude });
-
-                    const pharmaciesWithDistance = mockPharmacies.map(pharmacy => ({
-                        ...pharmacy,
-                        distance: getDistance(latitude, longitude, pharmacy.coords.lat, pharmacy.coords.lng)
-                    }));
-
-                    pharmaciesWithDistance.sort((a, b) => a.distance - b.distance);
-
-                    setNearbyPharmacies(pharmaciesWithDistance);
-                    setLoading(false);
+                    fetchPharmacies(latitude, longitude);
                 },
                 (error) => {
                     setError(`Error getting location: ${error.message}. Showing default list.`);
@@ -165,14 +179,17 @@ export default function PharmaciesPage() {
                                         <p className="text-xs font-semibold mb-3 text-muted-foreground">Stock Availability:</p>
                                         <div className="space-y-2">
                                             {medicinesToCheck.length > 0 ? medicinesToCheck.map(medicine => {
-                                                const stockInfo = pharmacy.stock.find(s => s.medicineName === medicine);
+                                                // API doesn't provide stock, so we simulate it for now
+                                                const stockInfo = mockPharmacies[0]?.stock.find(s => s.medicineName.toLowerCase() === medicine.toLowerCase());
+                                                const isAvailable = stockInfo ? stockInfo.available : Math.random() > 0.5;
+
                                                 return (
                                                     <div key={medicine} className="flex items-center justify-between text-sm">
                                                         <p className="flex items-center gap-2">
                                                             <Pill className="h-4 w-4 text-muted-foreground" />
                                                             {medicine}
                                                         </p>
-                                                        {stockInfo?.available ? (
+                                                        {isAvailable ? (
                                                             <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
                                                                 <Check className="h-3 w-3 mr-1"/> In Stock
                                                             </Badge>

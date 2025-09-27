@@ -88,6 +88,7 @@ export type Pharmacy = {
     id: string;
     name: string;
     address: string;
+    distance?: number;
     coords: { lat: number; lng: number };
-    stock: { medicineName: string; available: boolean; lastUpdated: string }[];
+    stock?: { medicineName: string; available: boolean; lastUpdated: string }[];
 };
