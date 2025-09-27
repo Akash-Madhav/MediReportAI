@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Map,
   Menu,
+  MessageCircle,
   Search,
   Settings,
 } from "lucide-react"
@@ -32,6 +33,7 @@ const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/reports', icon: FileText, label: 'Reports', badge: 2 },
     { href: '/prescriptions', icon: ClipboardType, label: 'Prescriptions', badge: 1 },
+    { href: '/chat', icon: MessageCircle, label: 'Chat with AI' },
     { href: '/pharmacies', icon: Map, label: 'Find Pharmacies' },
     { href: '/settings', icon: Settings, label: 'Settings' },
   ];
