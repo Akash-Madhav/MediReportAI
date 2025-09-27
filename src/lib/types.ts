@@ -92,3 +92,12 @@ export type Pharmacy = {
     coords: { lat: number; lng: number };
     stock?: { medicineName: string; available: boolean; lastUpdated: string }[];
 };
+
+export type Appointment = {
+    id: string;
+    patientId: string;
+    doctorName: string;
+    date: string; // ISO date string
+    time: string; // e.g. "10:30 AM"
+    status: 'upcoming' | 'completed' | 'cancelled';
+}
