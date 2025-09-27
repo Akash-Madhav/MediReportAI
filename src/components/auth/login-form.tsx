@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Fingerprint, Atom } from "lucide-react";
+import { Fingerprint, Atom, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Logo } from "../icons";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Separator } from "../ui/separator";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -54,6 +57,34 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+            <div className="grid gap-1">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="m@example.com" />
+            </div>
+            <div className="grid gap-1">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" />
+            </div>
+        </div>
+        <Link href="/dashboard" className="w-full">
+            <Button className="w-full">
+                <Mail className="mr-2 h-5 w-5" />
+                Sign in with Email
+            </Button>
+        </Link>
+
+        <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                Or continue with
+                </span>
+            </div>
+        </div>
+
         <Link href="/dashboard" className="w-full">
             <Button className="w-full" variant="outline">
                 <GoogleIcon className="mr-2" />
