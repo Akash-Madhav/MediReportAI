@@ -66,14 +66,12 @@ export function LoginForm() {
                 <Input id="password" type="password" />
             </div>
         </div>
-        <Link href="/dashboard" passHref>
-          <Button asChild className="w-full">
-            <span>
+        <Button asChild className="w-full">
+            <Link href="/dashboard">
                 <Mail className="mr-2 h-5 w-5" />
                 Sign in with Email
-            </span>
-          </Button>
-        </Link>
+            </Link>
+        </Button>
 
         <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -85,14 +83,12 @@ export function LoginForm() {
                 </span>
             </div>
         </div>
-        <Link href="/dashboard" passHref>
-            <Button asChild className="w-full" variant="outline">
-                <span>
-                    <GoogleIcon className="mr-2" />
-                    Sign in with Google
-                </span>
-            </Button>
-        </Link>
+        <Button asChild className="w-full" variant="outline">
+            <Link href="/dashboard">
+                <GoogleIcon className="mr-2" />
+                Sign in with Google
+            </Link>
+        </Button>
       </CardContent>
       <CardFooter className="flex-col gap-2 text-center text-xs text-muted-foreground">
         <p>
