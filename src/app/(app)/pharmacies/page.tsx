@@ -16,9 +16,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { onValue, ref, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { findNearbyPharmacies } from "@/ai/flows/find-nearby-pharmacies";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PharmaciesPage() {
     const { user } = useAuth();
+    const { toast } = useToast();
     const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
     const [nearbyPharmacies, setNearbyPharmacies] = useState<Pharmacy[]>([]);
     const [medicinesToCheck, setMedicinesToCheck] = useState<string[]>([]);
@@ -71,11 +73,13 @@ export default function PharmaciesPage() {
             }
         } catch (apiError: any) {
             console.error(apiError);
-            let errorMessage = "Could not fetch pharmacies. Please check API keys and try again.";
+            let errorMessage = "Could not fetch pharmacies. Please try again.";
             if(apiError.message?.includes("401") || apiError.message?.includes("403")) {
-              errorMessage = "Could not authenticate with MapmyIndia API. Please check your credentials and configuration.";
+              errorMessage = "Could not authenticate with the mapping service. Please check your configuration.";
             } else if (apiError.message?.includes("404")) {
               errorMessage = "The pharmacy service endpoint could not be found. Please contact support.";
+            } else if (apiError.message?.includes("undefined in property")) {
+                errorMessage = "There was an issue processing the pharmacy data from the AI. Retrying may help.";
             }
             setError(errorMessage);
             setNearbyPharmacies([]);
@@ -128,6 +132,45 @@ export default function PharmaciesPage() {
         }
     }, [user]);
 
+    const handleDirectionsClick = (pharmacy: Pharmacy) => {
+        toast({
+            title: "Getting live location...",
+            description: "Please wait while we fetch your current position for accurate directions.",
+        });
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const url = `https://www.google.com/maps/dir/${latitude},${longitude}/${pharmacy.coords.lat},${pharmacy.coords.lng}`;
+                    window.open(url, "_blank", "noopener,noreferrer");
+                },
+                (error) => {
+                    toast({
+                        variant: "destructive",
+                        title: "Could not get live location",
+                        description: `Using last known location instead. Error: ${error.message}`,
+                    });
+                    // Fallback to the location stored in state
+                    const startLat = userLocation?.latitude || "";
+                    const startLng = userLocation?.longitude || "";
+                    const url = `https://www.google.com/maps/dir/${startLat},${startLng}/${pharmacy.coords.lat},${pharmacy.coords.lng}`;
+                    window.open(url, "_blank", "noopener,noreferrer");
+                }
+            );
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Geolocation not supported",
+                description: "Cannot get live location. Using last known location.",
+            });
+            const startLat = userLocation?.latitude || "";
+            const startLng = userLocation?.longitude || "";
+            const url = `https://www.google.com/maps/dir/${startLat},${startLng}/${pharmacy.coords.lat},${pharmacy.coords.lng}`;
+            window.open(url, "_blank", "noopener,noreferrer");
+        }
+    };
+
     return (
         <div className="flex flex-col gap-8">
             <div>
@@ -178,11 +221,9 @@ export default function PharmaciesPage() {
                                         </p>
                                     )}
                                 </div>
-                                <Button asChild variant="outline" size="sm" className="shrink-0">
-                                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${pharmacy.coords.lat},${pharmacy.coords.lng}`} target="_blank" rel="noopener noreferrer">
-                                        <Navigation className="h-3 w-3 mr-2"/>
-                                        Directions
-                                    </a>
+                                <Button onClick={() => handleDirectionsClick(pharmacy)} variant="outline" size="sm" className="shrink-0">
+                                    <Navigation className="h-3 w-3 mr-2"/>
+                                    Directions
                                 </Button>
                             </div>
                             <div className="mt-4 pt-4 border-t flex-grow">
