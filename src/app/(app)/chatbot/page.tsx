@@ -36,6 +36,8 @@ export default function ChatbotPage() {
       content: [{ text: input }],
     };
     
+    // We only include the user's message in the history sent to the API at first.
+    // Subsequent messages will include the full history.
     const newMessages = [...messages, userMessage];
 
     setMessages(newMessages);
@@ -53,6 +55,7 @@ export default function ChatbotPage() {
     } catch (error: any) {
       console.error('Error with chatbot:', error);
       let errorMessageText = 'Sorry, I encountered an error. Please try again.';
+      // This handles the specific Zod validation error from Genkit
       if (error.message && error.message.includes('The first message must be from the user')) {
           errorMessageText = "It looks like there was a problem starting the conversation. Please try sending your message again."
       }
