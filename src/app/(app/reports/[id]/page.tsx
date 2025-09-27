@@ -32,10 +32,11 @@ const statusColorMap: { [key: string]: string } = {
     abnormal: '',
 };
 
-export default function ReportDetailPage({ params: { id } }: { params: { id: string } }) {
+export default function ReportDetailPage({ params }: { params: { id: string } }) {
     const { displayUser } = useAuth();
     const [report, setReport] = useState<Report | null>(null);
     const [loading, setLoading] = useState(true);
+    const { id } = params;
 
     useEffect(() => {
         if (id) {
@@ -156,7 +157,7 @@ export default function ReportDetailPage({ params: { id } }: { params: { id: str
                             <CardDescription>Potential conditions based on results.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {report.riskSummary?.map((risk, i) => (
+                            {report.riskSummary.map((risk, i) => (
                                 <div key={i}>
                                     <p className="font-semibold">{risk.condition} <span className="text-sm text-muted-foreground">({risk.confidence} confidence)</span></p>
                                     <p className="text-sm text-muted-foreground">{risk.note}</p>
@@ -170,7 +171,7 @@ export default function ReportDetailPage({ params: { id } }: { params: { id: str
                             <CardDescription>Recommended next steps.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {report.suggestedFollowUps?.map((followUp, i) => (
+                            {report.suggestedFollowUps.map((followUp, i) => (
                                 <div key={i}>
                                     <p className="font-semibold">{followUp.test} <span className="text-sm text-muted-foreground">(Priority: {followUp.priority})</span></p>
                                     <p className="text-sm text-muted-foreground">{followUp.reason}</p>

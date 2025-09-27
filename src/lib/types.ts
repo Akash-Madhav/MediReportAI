@@ -56,6 +56,7 @@ export type Prescription = {
     dosage: string;
     frequency: string;
     route: string;
+    reason: string;
   }[];
   interactions: {
     drugA: string;
