@@ -21,7 +21,7 @@ import {
   import { format, parseISO } from "date-fns"
   import { useAuth } from "@/hooks/use-auth";
   import { useState, useEffect } from "react";
-  import { ref, query, orderByChild, equalTo, onValue } from "firebase/database";
+  import { ref, onValue } from "firebase/database";
   import { db } from "@/lib/firebase";
   import type { Report } from "@/lib/types";
   import { UploadReportDialog } from "@/components/reports/upload-report-dialog";
@@ -36,10 +36,10 @@ import {
         if (!user) return;
 
         setLoading(true);
-        const reportsRef = ref(db, 'reports');
-        const userReportsQuery = query(reportsRef, orderByChild('patientId'), equalTo(user.uid));
+        // Fetch reports from the user-specific path
+        const userReportsRef = ref(db, `reports/${user.uid}`);
 
-        const unsubscribe = onValue(userReportsQuery, (snapshot) => {
+        const unsubscribe = onValue(userReportsRef, (snapshot) => {
             const data = snapshot.val();
             const reportsData: Report[] = [];
             if (data) {

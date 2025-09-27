@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { chatbot } from '@/ai/flows/chatbot';
 import { Loader2, User, Bot } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -44,17 +44,21 @@ export default function ChatbotPage() {
 
     try {
       // The history sent to the API should only contain the actual conversation
-      const response = await chatbot({ messages: newMessages });
+      const responseText = await chatbot({ messages: newMessages });
       const botMessage: ChatMessage = {
         role: 'model',
-        content: [{ text: response }],
+        content: [{ text: responseText }],
       };
       setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error with chatbot:', error);
+      let errorMessageText = 'Sorry, I encountered an error. Please try again.';
+      if (error.message && error.message.includes('The first message must be from the user')) {
+          errorMessageText = "It looks like there was a problem starting the conversation. Please try sending your message again."
+      }
       const errorMessage: ChatMessage = {
         role: 'model',
-        content: [{ text: 'Sorry, I encountered an error. Please try again.' }],
+        content: [{ text: errorMessageText }],
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -79,53 +83,51 @@ export default function ChatbotPage() {
           AI Medical Assistant
         </h1>
         <p className="text-muted-foreground">
-          Ask general health questions.
+          Ask general health questions. For medical advice, please consult a doctor.
         </p>
       </div>
 
       <Card className="flex-1 flex flex-col">
         <CardContent className="flex-1 p-6 overflow-y-auto space-y-6">
-          {messages.length === 0 ? (
-             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <Bot className="h-12 w-12 mb-4" />
-                <h2 className="text-xl font-semibold">Start a Conversation</h2>
-                <p className="mt-2">
-                    {initialBotMessage.content[0].text}
-                </p>
-            </div>
-          ) : (
-            <>
-            {[...messages].map((message, index) => (
+          <div className="flex items-start gap-4">
+              <Avatar className="h-9 w-9 border">
+                  <AvatarFallback><Bot /></AvatarFallback>
+              </Avatar>
+              <div className="max-w-md rounded-lg p-3 bg-muted">
+                  <p className="text-sm">{initialBotMessage.content[0].text}</p>
+              </div>
+          </div>
+          
+          {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`flex items-start gap-4 ${
+              message.role === 'user' ? 'justify-end' : ''
+            }`}
+          >
+            {message.role === 'model' && (
+              <Avatar className="h-9 w-9 border">
+                  <AvatarFallback><Bot /></AvatarFallback>
+              </Avatar>
+            )}
             <div
-              key={index}
-              className={`flex items-start gap-4 ${
-                message.role === 'user' ? 'justify-end' : ''
+              className={`max-w-md rounded-lg p-3 ${
+                message.role === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted'
               }`}
             >
-              {message.role === 'model' && (
-                <Avatar className="h-9 w-9 border">
-                   <AvatarFallback><Bot /></AvatarFallback>
-                </Avatar>
-              )}
-              <div
-                className={`max-w-md rounded-lg p-3 ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                }`}
-              >
-                <p className="text-sm">{message.content.map(c => c.text).join('')}</p>
-              </div>
-               {message.role === 'user' && displayUser && (
-                <Avatar className="h-9 w-9 border">
-                    <AvatarImage src={displayUser.photoURL || undefined} />
-                   <AvatarFallback>{getInitials(displayUser.displayName)}</AvatarFallback>
-                </Avatar>
-              )}
+              <p className="text-sm">{message.content.map(c => c.text).join('')}</p>
             </div>
-          ))}
-          </>
-          )}
+              {message.role === 'user' && displayUser && (
+              <Avatar className="h-9 w-9 border">
+                  <AvatarImage src={displayUser.photoURL || undefined} />
+                  <AvatarFallback>{getInitials(displayUser.displayName)}</AvatarFallback>
+              </Avatar>
+            )}
+          </div>
+        ))}
+        
            {isLoading && (
             <div className="flex items-start gap-4">
                 <Avatar className="h-9 w-9 border">

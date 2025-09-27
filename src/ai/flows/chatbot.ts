@@ -6,27 +6,15 @@
 
 import { chatAi } from '@/ai/genkit';
 import { z } from 'zod';
-import { Message, Part } from 'genkit';
+import { Message } from 'genkit';
 
-// Schema for a single message part
-const PartSchema = z.object({
-  text: z.string(),
-  // Extend with image, video, etc., if needed
-});
-
-// Schema for a single message (user or model)
-const MessageSchema = z.object({
-  role: z.enum(['user', 'model']),
-  content: z.array(PartSchema),
-});
-
-// Chat input schema — with first message check
+// Chat input schema
 const ChatbotInputSchema = z.object({
-  messages: z.array(MessageSchema).refine(
-    (messages) => messages.length > 0 && messages[0].role === 'user',
-    {
-      message: 'The first message must be from the user.',
-    }
+  messages: z.array(
+    z.object({
+      role: z.enum(['user', 'model']),
+      content: z.array(z.object({ text: z.string() })),
+    })
   ),
 });
 
@@ -34,10 +22,6 @@ export type ChatbotInput = z.infer<typeof ChatbotInputSchema>;
 
 // Main chatbot function
 export async function chatbot(input: ChatbotInput): Promise<string> {
-  try {
-    // Validate with Zod manually if needed
-    ChatbotInputSchema.parse(input);
-
     const { output } = await chatbotPrompt(input);
 
     if (output === null) {
@@ -45,10 +29,6 @@ export async function chatbot(input: ChatbotInput): Promise<string> {
     }
 
     return output;
-  } catch (err: any) {
-    console.error('Chatbot error:', err);
-    return err.message || 'Something went wrong.';
-  }
 }
 
 // Genkit prompt definition
