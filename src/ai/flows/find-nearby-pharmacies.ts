@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview A flow to find nearby pharmacies using the MapmyIndia API.
+ * @fileOverview A flow to find nearby pharmacies using the MapmyIndia Atlas API.
  * 
  * - findNearbyPharmacies - A function that fetches pharmacy data.
  * - FindNearbyPharmaciesInput - The input type for the findNearbyPharmacies function.
@@ -39,6 +39,40 @@ export async function findNearbyPharmacies(input: FindNearbyPharmaciesInput): Pr
   return findNearbyPharmaciesFlow(input);
 }
 
+// Function to get the access token
+async function getMapmyIndiaToken(): Promise<string> {
+    const clientId = process.env.MAPMYINDIA_CLIENT_ID;
+    const clientSecret = process.env.MAPMYINDIA_CLIENT_SECRET;
+    const apiKey = process.env.MAPMYINDIA_API_KEY;
+
+    if (!clientId || !clientSecret || !apiKey) {
+        throw new Error('MapmyIndia credentials are not fully configured.');
+    }
+
+    const tokenUrl = 'https://outpost.mappls.com/api/security/oauth/token';
+
+    const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: clientId,
+            client_secret: clientSecret
+        })
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('MapmyIndia Token API Error:', errorBody);
+        throw new Error(`Failed to get MapmyIndia token with status ${response.status}`);
+    }
+
+    const data: any = await response.json();
+    return data.access_token;
+}
+
 
 const findNearbyPharmaciesFlow = ai.defineFlow(
     {
@@ -47,19 +81,16 @@ const findNearbyPharmaciesFlow = ai.defineFlow(
         outputSchema: FindNearbyPharmaciesOutputSchema,
     },
     async (input) => {
-        const apiKey = process.env.MAPMYINDIA_API_KEY;
-        if (!apiKey) {
-            throw new Error('MapmyIndia API key is not configured.');
-        }
-
-        const url = `https://atlas.mappls.com/api/places/nearby/json?keywords=pharmacy&refLocation=${input.latitude},${input.longitude}`;
         
         try {
+            const accessToken = await getMapmyIndiaToken();
+            const url = `https://atlas.mappls.com/api/places/nearby/json?keywords=pharmacy&refLocation=${input.latitude},${input.longitude}`;
+
             const response = await fetch(url, {
-                method: 'POST',
+                method: 'GET', // Correct method is GET for this endpoint
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`,
+                    'Authorization': `Bearer ${accessToken}`,
                 },
             });
             
