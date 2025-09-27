@@ -92,12 +92,16 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                 throw error;
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Analysis failed:", error);
+            let description = 'Could not analyze the prescription. Please try again.';
+            if (error.message && error.message.includes('Service Unavailable')) {
+                description = 'The analysis service is temporarily unavailable. Please try again in a few moments.';
+            }
             toast({
                 variant: 'destructive',
                 title: 'Analysis Failed',
-                description: 'Could not analyze the prescription. Please try again.',
+                description: description,
             });
         } finally {
             setIsAnalyzing(false);

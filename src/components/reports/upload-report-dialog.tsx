@@ -73,12 +73,16 @@ export function UploadReportDialog({ open, onOpenChange }: UploadReportDialogPro
 
             resetAndClose();
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Analysis failed:", error);
+            let description = 'Could not analyze the report. Please check the content and try again.';
+            if (error.message && error.message.includes('Service Unavailable')) {
+                description = 'The analysis service is temporarily unavailable. Please try again in a few moments.';
+            }
             toast({
                 variant: 'destructive',
                 title: 'Analysis Failed',
-                description: 'Could not analyze the report. Please check the content and try again.',
+                description: description,
             });
         } finally {
             setIsAnalyzing(false);
