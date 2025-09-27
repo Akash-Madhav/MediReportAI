@@ -141,7 +141,6 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                 // Check if the file name is empty and set a default if needed
                 const nameToSave = fileName.trim() || "Untitled Prescription";
                 
-                // Note: File storage is still simulated with 'storagePath'
                 const userPrescriptionsRef = ref(db, `prescriptions/${user.uid}`);
                 const newPrescriptionRef = push(userPrescriptionsRef); 
                 
@@ -149,12 +148,8 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                     name: nameToSave,
                     patientId: user.uid,
                     uploadedAt: new Date().toISOString(),
-                    medicines: analysisResult.medicines,
-                    interactions: analysisResult.interactions || [],
                     storagePath: 'simulated_path/' + file?.name,
-                    // Include the data URI for display on the detail page if needed, 
-                    // though this can be large and should ideally be stored in Firebase Storage.
-                    // fileDataUri: filePreview // <-- Uncomment if you choose to store the image data
+                    ...analysisResult, // Save the entire analysis result
                 });
                 
                 toast({
