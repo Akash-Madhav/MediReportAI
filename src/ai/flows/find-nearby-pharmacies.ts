@@ -10,7 +10,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { fetchAndFormatPharmacies } from '@/services/pharmacy-service';
 import { ref, set } from "firebase/database";
 import { db } from "@/lib/firebase";
 
@@ -22,13 +21,13 @@ const FindNearbyPharmaciesInputSchema = z.object({
 export type FindNearbyPharmaciesInput = z.infer<typeof FindNearbyPharmaciesInputSchema>;
 
 const PharmacySchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    address: z.string(),
-    distance: z.number().optional(),
+    id: z.string().describe("A unique identifier for the pharmacy."),
+    name: z.string().describe("The name of the pharmacy."),
+    address: z.string().describe("The full address of the pharmacy."),
+    distance: z.number().optional().describe("The distance in meters from the user's location."),
     coords: z.object({
-        lat: z.number(),
-        lng: z.number(),
+        lat: z.number().describe("The latitude of the pharmacy."),
+        lng: z.number().describe("The longitude of the pharmacy."),
     }),
 });
 
@@ -42,6 +41,20 @@ export async function findNearbyPharmacies(input: FindNearbyPharmaciesInput): Pr
   return findNearbyPharmaciesFlow(input);
 }
 
+const findPharmaciesPrompt = ai.definePrompt({
+    name: 'findNearbyPharmaciesPrompt',
+    input: { schema: FindNearbyPharmaciesInputSchema },
+    output: { schema: FindNearbyPharmaciesOutputSchema },
+    prompt: `You are a helpful local guide. A user is looking for pharmacies near their location.
+    
+    Their current location is latitude: {{latitude}} and longitude: {{longitude}}.
+
+    Please find a list of 10 nearby pharmacies. For each pharmacy, provide a unique ID, its name, full address, and its precise latitude and longitude coordinates.
+    
+    Return the data strictly in the required JSON format.
+    `,
+});
+
 const findNearbyPharmaciesFlow = ai.defineFlow(
     {
         name: 'findNearbyPharmaciesFlow',
@@ -50,14 +63,29 @@ const findNearbyPharmaciesFlow = ai.defineFlow(
     },
     async (input) => {
         try {
-            // Use the dedicated service to fetch and format data
-            const pharmacies = await fetchAndFormatPharmacies(input.latitude, input.longitude);
+            // Use Gemini to generate the pharmacy list
+            const { output } = await findPharmaciesPrompt(input);
+
+            if (!output || !output.pharmacies) {
+                throw new Error('AI failed to generate pharmacy data.');
+            }
             
             // Save the correctly formatted data to the database
             const dbRef = ref(db, `nearby_pharmacies/${input.userId}`);
-            await set(dbRef, pharmacies);
+            // Use a format that works well with Firebase RTDB (object with keys)
+            const pharmaciesToSave = output.pharmacies.reduce((acc: any, pharmacy) => {
+                acc[pharmacy.id] = {
+                    name: pharmacy.name,
+                    address: pharmacy.address,
+                    distance: pharmacy.distance,
+                    coords: pharmacy.coords,
+                };
+                return acc;
+            }, {});
 
-            return { pharmacies };
+            await set(dbRef, pharmaciesToSave);
+
+            return output;
 
         } catch (error: any) {
             console.error('Error in findNearbyPharmaciesFlow:', error);
