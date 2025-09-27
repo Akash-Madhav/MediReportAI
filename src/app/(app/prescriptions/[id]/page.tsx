@@ -25,13 +25,14 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
     const { displayUser } = useAuth();
     const [presc, setPresc] = useState<Prescription | null>(null);
     const [loading, setLoading] = useState(true);
-    const { id } = params;
 
     useEffect(() => {
-        if (!id) return;
+        const prescriptionId = params.id;
+        if (!prescriptionId) return;
+
         const fetchPrescription = async () => {
             setLoading(true);
-            const docRef = ref(db, `prescriptions/${id}`);
+            const docRef = ref(db, `prescriptions/${prescriptionId}`);
             const docSnap = await get(docRef);
 
             if (docSnap.exists()) {
@@ -43,7 +44,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
         };
 
         fetchPrescription();
-    }, [id]);
+    }, [params]);
 
 
     if (loading || !presc || !displayUser) return (
