@@ -107,8 +107,8 @@ const findNearbyPharmaciesFlow = ai.defineFlow(
                 address: location.placeAddress,
                 distance: location.distance,
                 coords: {
-                    lat: location.lat,
-                    lng: location.lng,
+                    lat: location.latitude,
+                    lng: location.longitude,
                 }
             }));
 
