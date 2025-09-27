@@ -28,6 +28,7 @@ const AnalyzePrescriptionOutputSchema = z.object({
       dosage: z.string().describe('Dosage of the medicine.'),
       frequency: z.string().describe('Frequency of the medicine.'),
       route: z.string().describe('Route of administration.'),
+      reason: z.string().describe('The likely reason or condition this medicine is prescribed for.'),
     })
   ).describe('List of medicines extracted from the prescription.'),
   interactions: z.array(
@@ -53,6 +54,7 @@ const analyzePrescriptionPrompt = ai.definePrompt({
   prompt: `You are a pharmacist analyzing a prescription.
 
   Extract the medicines, their dosages, frequencies, and routes of administration from the prescription photo.
+  Based on the medicine, provide the likely reason for its use.
 
   Also, check for potential drug interactions based on the extracted medicines.  If there are no interactions, return an empty array.
   Photo: {{media url=prescriptionDataUri}}

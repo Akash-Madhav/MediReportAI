@@ -104,6 +104,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
                                     <TableHead>Dosage</TableHead>
                                     <TableHead>Frequency</TableHead>
                                     <TableHead>Route</TableHead>
+                                    <TableHead>Reason for Use</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -113,6 +114,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
                                         <TableCell>{med.dosage}</TableCell>
                                         <TableCell>{med.frequency}</TableCell>
                                         <TableCell>{med.route}</TableCell>
+                                        <TableCell>{med.reason}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
