@@ -89,10 +89,20 @@ export function LoginForm({ variant = 'login' }: { variant?: 'login' | 'signup' 
       router.push('/dashboard');
     } catch (error: any) {
       console.error(`Error during ${isLogin ? 'email sign-in' : 'email sign-up'}:`, error);
+      
+      let description = "An unexpected error occurred. Please try again.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        description = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (error.code === 'auth/email-already-in-use') {
+        description = 'An account with this email already exists. Please sign in instead.';
+      } else {
+        description = error.message;
+      }
+      
       toast({
         variant: "destructive",
         title: `${isLogin ? 'Sign-in' : 'Sign-up'} Failed`,
-        description: error.message || "An unexpected error occurred. Please try again.",
+        description,
       });
     }
   };
