@@ -36,23 +36,23 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
     const { displayUser } = useAuth();
     const [report, setReport] = useState<Report | null>(null);
     const [loading, setLoading] = useState(true);
-    const id = params.id;
+    const { id } = params;
 
     useEffect(() => {
         if (id) {
             const getReport = async (reportId: string) => {
+                setLoading(true);
                 const docRef = ref(db, `reports/${reportId}`);
                 const docSnap = await get(docRef);
                 if (!docSnap.exists()) {
                   notFound();
+                } else {
+                    setReport({ id: docSnap.key, ...docSnap.val() } as Report);
                 }
-                return { id: docSnap.key, ...docSnap.val() } as Report;
+                setLoading(false);
             }
 
-            getReport(id).then(data => {
-                setReport(data);
-                setLoading(false);
-            }).catch(() => {
+            getReport(id).catch(() => {
                 setLoading(false);
                 notFound();
             })
