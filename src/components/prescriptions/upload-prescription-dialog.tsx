@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { analyzePrescription } from "@/ai/flows/analyze-prescriptions";
-import { ref, push } from "firebase/database";
+import { ref, push, set } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Loader2, UploadCloud } from "lucide-react";
 import Image from "next/image";
@@ -71,10 +71,9 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                 const analysisResult = await analyzePrescription({ prescriptionDataUri });
                 
                 // Save to Realtime Database
-                const prescriptionsRef = ref(db, 'prescriptions');
-                const newPrescriptionRef = push(prescriptionsRef);
+                const newPrescriptionRef = push(ref(db, 'prescriptions'));
                 
-                await push(newPrescriptionRef, {
+                await set(newPrescriptionRef, {
                     name: fileName || "Untitled Prescription",
                     patientId: user.uid,
                     uploadedAt: new Date().toISOString(),
@@ -126,7 +125,7 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                         <Label htmlFor="picture">Prescription Image</Label>
                         <div className="w-full h-48 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground relative">
                             {filePreview ? (
-                                <Image src={filePreview} alt="Prescription preview" layout="fill" objectFit="contain" className="rounded-lg" />
+                                <Image src={filePreview} alt="Prescription preview" fill objectFit="contain" className="rounded-lg" />
                             ) : (
                                 <div className="text-center">
                                     <UploadCloud className="mx-auto h-8 w-8 mb-2" />

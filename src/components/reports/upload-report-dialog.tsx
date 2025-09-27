@@ -55,8 +55,7 @@ export function UploadReportDialog({ open, onOpenChange }: UploadReportDialogPro
             });
 
             // 3. Save everything to Realtime Database
-            const reportsRef = ref(db, 'reports');
-            const newReportRef = push(reportsRef);
+            const newReportRef = push(ref(db, 'reports'));
 
             await set(newReportRef, {
                 name: reportName,

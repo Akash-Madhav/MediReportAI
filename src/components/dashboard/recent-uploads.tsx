@@ -38,22 +38,30 @@ export function RecentUploads() {
             limitToLast(2)
         );
 
+        let combinedUploads: Upload[] = [];
+
         const unsubscribeReports = onValue(reportsQuery, (snapshot) => {
             const reports: Upload[] = [];
             if(snapshot.exists()) {
                 const data = snapshot.val();
-                reports.push(...Object.keys(data).map(key => ({ ...data[key], id: key, type: 'report' } as Upload)));
+                Object.keys(data).forEach(key => reports.push({ ...data[key], id: key, type: 'report' } as Upload));
             }
-            setRecentUploads(prev => [...reports, ...prev.filter(u => u.type !== 'report')].sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()).slice(0, 3));
+            // Combine and sort
+            combinedUploads = [...reports, ...combinedUploads.filter(u => u.type !== 'report')];
+            combinedUploads.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+            setRecentUploads(combinedUploads.slice(0, 3));
         });
 
         const unsubscribePrescriptions = onValue(prescriptionsQuery, (snapshot) => {
             const prescriptions: Upload[] = [];
             if(snapshot.exists()) {
                 const data = snapshot.val();
-                prescriptions.push(...Object.keys(data).map(key => ({ ...data[key], id: key, type: 'prescription' } as Upload)));
+                 Object.keys(data).forEach(key => prescriptions.push({ ...data[key], id: key, type: 'prescription' } as Upload));
             }
-            setRecentUploads(prev => [...prescriptions, ...prev.filter(u => u.type !== 'prescription')].sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()).slice(0, 3));
+            // Combine and sort
+            combinedUploads = [...prescriptions, ...combinedUploads.filter(u => u.type !== 'prescription')];
+            combinedUploads.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+            setRecentUploads(combinedUploads.slice(0, 3));
         });
 
 

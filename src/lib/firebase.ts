@@ -9,7 +9,7 @@ const firebaseConfig = {
   "authDomain": "studio-7903526903-e4cdf.firebaseapp.com",
   "measurementId": "",
   "messagingSenderId": "836210131551",
-  "databaseURL": "https://studio-7903526903-e4cdf-default-rtdb.firebaseio.com"
+  "databaseURL": "https://studio-7903526903-e4cdf-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 // Initialize Firebase
