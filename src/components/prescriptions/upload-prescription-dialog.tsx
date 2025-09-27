@@ -27,6 +27,25 @@ interface UploadPrescriptionDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
+// Helper function to promisify FileReader
+const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const result = e.target?.result as string;
+            if (result) {
+                resolve(result);
+            } else {
+                reject(new Error("Could not read file as Data URL."));
+            }
+        };
+        reader.onerror = (error) => {
+            reject(error);
+        };
+        reader.readAsDataURL(file);
+    });
+};
+
 export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescriptionDialogProps) {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -72,42 +91,45 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Please select a file to analyze.',
+                description: 'Please select a file and ensure you are logged in.',
             });
             return;
         }
 
         setStep('analyzing');
         try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async (e) => {
-                const prescriptionDataUri = e.target?.result as string;
-
-                if (!prescriptionDataUri) {
-                    throw new Error("Could not read file.");
-                }
-
-                const result = await analyzePrescription({ prescriptionDataUri });
-                setAnalysisResult(result);
-                setStep('results');
-            };
-            reader.onerror = (error) => {
-                throw error;
-            }
+            // Use the promisified helper to ensure file reading is awaited
+            const prescriptionDataUri = await readFileAsDataURL(file);
+            
+            // This is now correctly within the try block and will catch Genkit errors
+            const result = await analyzePrescription({ prescriptionDataUri });
+            
+            setAnalysisResult(result);
+            setStep('results');
 
         } catch (error: any) {
             console.error("Analysis failed:", error);
+            
             let description = 'Could not analyze the prescription. Please try again.';
-            if (error.message && (error.message.includes('Service Unavailable') || error.message.includes('503'))) {
+            let title = 'Analysis Failed';
+
+            // Check for Genkit/API errors (based on previous context)
+            if (error.message?.includes('API key') || error.message?.includes('FAILED_PRECONDITION')) {
+                 title = 'Configuration Error';
+                 description = 'The analysis service is not configured correctly. Please check the API key.';
+            } else if (error.message?.includes('Service Unavailable') || error.message?.includes('503')) {
                 description = 'The analysis service is temporarily unavailable. Please try again in a few moments.';
+            } else if (error.message?.includes('Could not read file')) {
+                description = 'Failed to read the selected file. Please ensure it is a valid image.';
             }
+
             toast({
                 variant: 'destructive',
-                title: 'Analysis Failed',
+                title: title,
                 description: description,
             });
-            setStep('upload');
+            
+            setStep('upload'); // Return to upload step on failure
         }
     };
 
@@ -116,15 +138,24 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
 
         if (saveToDb) {
             try {
-                const newPrescriptionRef = push(ref(db, 'prescriptions'));
+                // Check if the file name is empty and set a default if needed
+                const nameToSave = fileName.trim() || "Untitled Prescription";
+                
+                // Note: File storage is still simulated with 'storagePath'
+                const newPrescriptionRef = push(ref(db, `prescriptions`));
+                
                 await set(newPrescriptionRef, {
-                    name: fileName || "Untitled Prescription",
+                    name: nameToSave,
                     patientId: user.uid,
                     uploadedAt: new Date().toISOString(),
                     medicines: analysisResult.medicines,
                     interactions: analysisResult.interactions || [],
-                    storagePath: 'simulated_path/' + file?.name
+                    storagePath: 'simulated_path/' + file?.name,
+                    // Include the data URI for display on the detail page if needed, 
+                    // though this can be large and should ideally be stored in Firebase Storage.
+                    // fileDataUri: filePreview // <-- Uncomment if you choose to store the image data
                 });
+                
                 toast({
                     title: 'Analysis Saved',
                     description: 'Your prescription analysis has been saved to your records.',
@@ -139,6 +170,7 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                 return; // Don't close if save fails
             }
         }
+        
         resetState(); // Reset and close dialog
         onOpenChange(false);
     };
@@ -156,7 +188,7 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                 const interactionCount = analysisResult?.interactions?.length || 0;
                 return (
                     <div className="space-y-4">
-                         <div className="p-4 rounded-lg bg-secondary">
+                        <div className="p-4 rounded-lg bg-secondary">
                             <h3 className="font-semibold text-lg mb-2">Analysis Complete</h3>
                             <div className="flex items-center gap-4">
                                <Pill className="h-5 w-5 text-primary"/>
@@ -184,7 +216,7 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                             <Label htmlFor="picture">Prescription Image</Label>
                             <div className="w-full h-48 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground relative">
                                 {filePreview ? (
-                                    <Image src={filePreview} alt="Prescription preview" fill objectFit="contain" className="rounded-lg" />
+                                    <Image src={filePreview} alt="Prescription preview" fill style={{ objectFit: 'contain' }} className="rounded-lg" />
                                 ) : (
                                     <div className="text-center">
                                         <UploadCloud className="mx-auto h-8 w-8 mb-2" />
@@ -221,21 +253,28 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                     {step === 'upload' && (
                         <>
                             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button onClick={handleAnalyze} disabled={!file}>
+                            <Button onClick={handleAnalyze} disabled={!file || !user}>
                                 Analyze
                             </Button>
                         </>
                     )}
                     {step === 'results' && (
-                         <>
-                            <Button variant="outline" onClick={resetState}>Discard</Button>
-                            <Button onClick={handleSaveAndClose} disabled={!analysisResult}>
-                                {saveToDb ? 'Save & Close' : 'Close'}
-                            </Button>
-                        </>
+                            <>
+                                <Button variant="outline" onClick={resetState}>Discard</Button>
+                                <Button onClick={handleSaveAndClose} disabled={!analysisResult}>
+                                    {saveToDb ? 'Save & Close' : 'Close'}
+                                </Button>
+                            </>
+                    )}
+                    {/* Add a fallback for 'analyzing' to prevent closing */}
+                    {step === 'analyzing' && (
+                         <Button disabled>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Analyzing...
+                         </Button>
                     )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    )
+    )
 }
