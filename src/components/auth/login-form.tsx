@@ -66,12 +66,14 @@ export function LoginForm() {
                 <Input id="password" type="password" />
             </div>
         </div>
-        <Button asChild className="w-full">
-            <Link href="/dashboard" >
-                <Mail className="mr-2 h-5 w-5" />
-                Sign in with Email
-            </Link>
-        </Button>
+        <Link href="/dashboard" passHref legacyBehavior>
+            <Button asChild className="w-full">
+                <a>
+                    <Mail className="mr-2 h-5 w-5" />
+                    Sign in with Email
+                </a>
+            </Button>
+        </Link>
 
         <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -83,19 +85,22 @@ export function LoginForm() {
                 </span>
             </div>
         </div>
-
-        <Button asChild className="w-full" variant="outline">
-            <Link href="/dashboard" >
-                <GoogleIcon className="mr-2" />
-                Sign in with Google
-            </Link>
-        </Button>
-        <Button asChild className="w-full">
-            <Link href="/dashboard">
-                <Fingerprint className="mr-2 h-5 w-5" />
-                Sign in with Biometrics
-            </Link>
-        </Button>
+        <Link href="/dashboard" passHref legacyBehavior>
+            <Button asChild className="w-full" variant="outline">
+                <a>
+                    <GoogleIcon className="mr-2" />
+                    Sign in with Google
+                </a>
+            </Button>
+        </Link>
+        <Link href="/dashboard" passHref legacyBehavior>
+            <Button asChild className="w-full">
+                <a>
+                    <Fingerprint className="mr-2 h-5 w-5" />
+                    Sign in with Biometrics
+                </a>
+            </Button>
+        </Link>
       </CardContent>
       <CardFooter className="flex-col gap-2 text-center text-xs text-muted-foreground">
         <p>
