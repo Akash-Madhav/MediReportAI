@@ -11,6 +11,7 @@
 import {reportAi} from '@/ai/genkit';
 import {z} from 'genkit';
 import mammoth from 'mammoth';
+import pdf from 'pdf-parse';
 
 const ExtractMedicalDataInputSchema = z.object({
   reportText: z
@@ -53,8 +54,7 @@ const extractMedicalDataPrompt = reportAi.definePrompt({
   name: 'extractMedicalDataPrompt',
   input: {
     schema: z.object({
-      reportText: z.string().optional(),
-      reportDataUri: z.string().optional(),
+      reportText: z.string(),
     }),
   },
   output: {schema: ExtractMedicalDataOutputSchema},
@@ -63,11 +63,7 @@ const extractMedicalDataPrompt = reportAi.definePrompt({
   Apply reasoning to include only the most important and relevant information in the extracted values.
 
   Here is the medical report:
-  {{#if reportText}}
-    {{{reportText}}}
-  {{else}}
-    {{media url=reportDataUri}}
-  {{/if}}
+  {{{reportText}}}
 
   Please extract the key medical data from the report, focusing on specific test results and their corresponding values, units, reference ranges, and statuses.
   Return the extracted data in the following JSON format:
@@ -90,20 +86,24 @@ const extractMedicalDataPrompt = reportAi.definePrompt({
 });
 
 async function extractTextFromDataUri(dataUri: string): Promise<string> {
-    const [metadata, base64Data] = dataUri.split(',');
-    const mimeType = metadata.split(':')[1].split(';')[0];
-    const buffer = Buffer.from(base64Data, 'base64');
-  
-    if (
-      mimeType ===
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ) {
-      const result = await mammoth.extractRawText({ buffer });
-      return result.value;
-    } else {
-      throw new Error(`Unsupported MIME type for text extraction: ${mimeType}`);
-    }
+  const [metadata, base64Data] = dataUri.split(',');
+  const mimeType = metadata.split(':')[1].split(';')[0];
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  if (mimeType === 'application/pdf') {
+    const data = await pdf(buffer);
+    return data.text;
+  } else if (
+    mimeType ===
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ) {
+    const result = await mammoth.extractRawText({buffer});
+    return result.value;
+  } else {
+    throw new Error(`Unsupported MIME type for text extraction: ${mimeType}`);
+  }
 }
+
 
 // Helper function to retry a promise-based function with exponential backoff
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
@@ -136,25 +136,21 @@ const extractMedicalDataFlow = reportAi.defineFlow(
     outputSchema: ExtractMedicalDataOutputSchema,
   },
   async input => {
-    let reportText = input.reportText;
-    let reportDataUri = input.reportDataUri;
+    let textToAnalyze = input.reportText;
 
-    if (!reportText && !reportDataUri) {
+    if (!textToAnalyze && !input.reportDataUri) {
         throw new Error('No report content provided. Please either paste text or upload a file.');
     }
 
     if (input.reportDataUri) {
-        const mimeType = input.reportDataUri.split(':')[1].split(';')[0];
-        if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-            reportText = await extractTextFromDataUri(input.reportDataUri);
-            // We've extracted the text, so we don't need to send the data URI to the model
-            reportDataUri = undefined;
-        } else if (mimeType !== 'application/pdf') {
-             throw new Error(`Unsupported file type: ${mimeType}. Please upload a PDF or DOCX.`);
-        }
+        textToAnalyze = await extractTextFromDataUri(input.reportDataUri);
     }
     
-    const {output} = await withRetry(() => extractMedicalDataPrompt({ reportText, reportDataUri }));
+    if (!textToAnalyze) {
+        throw new Error('Could not extract text from the provided source.');
+    }
+
+    const {output} = await withRetry(() => extractMedicalDataPrompt({ reportText: textToAnalyze! }));
     return output!;
   }
 );
