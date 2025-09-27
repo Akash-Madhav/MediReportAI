@@ -184,8 +184,8 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                                     </a>
                                 </Button>
                                 <Button asChild variant="outline" size="sm">
-                                    <a href={`https://www.walgreens.com/search/results.jsp?Ntt=${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
-                                        Search Walgreens <ExternalLink className="ml-2 h-3 w-3"/>
+                                    <a href={`https://www.apollopharmacy.in/search-medicines/${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
+                                        Search Apollo <ExternalLink className="ml-2 h-3 w-3"/>
                                     </a>
                                 </Button>
                             </div>
