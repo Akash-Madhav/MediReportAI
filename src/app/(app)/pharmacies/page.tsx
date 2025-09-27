@@ -19,20 +19,6 @@ import { onValue, ref } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { findNearbyPharmacies } from "@/ai/flows/find-nearby-pharmacies";
 
-// Haversine formula to calculate distance between two lat/lng points
-const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radius of the Earth in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
-};
-
-
 export default function PharmaciesPage() {
     const { user } = useAuth();
     const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
@@ -40,6 +26,7 @@ export default function PharmaciesPage() {
     const [medicinesToCheck, setMedicinesToCheck] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [mapUrl, setMapUrl] = useState("https://picsum.photos/seed/map/1200/800");
 
      useEffect(() => {
         if (!user) return;
@@ -74,14 +61,31 @@ export default function PharmaciesPage() {
 
                 pharmaciesWithKmDistance.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
                 setNearbyPharmacies(pharmaciesWithKmDistance);
-            } catch (apiError) {
+                updateMapUrl({latitude, longitude}, pharmaciesWithKmDistance);
+            } catch (apiError: any) {
                 console.error(apiError);
-                setError("Could not fetch pharmacies from the service. Displaying mock data.");
-                setNearbyPharmacies(mockPharmacies.slice(0,3));
+                setError("Could not fetch pharmacies. Please check API keys and try again.");
+                setNearbyPharmacies([]); // Clear out any mock data
             } finally {
                 setLoading(false);
             }
         };
+
+        const updateMapUrl = (userCoords: {latitude: number, longitude: number}, pharmacies: Pharmacy[]) => {
+            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'REPLACE_WITH_YOUR_API_KEY';
+            if (apiKey === 'REPLACE_WITH_YOUR_API_KEY') {
+                setError(prev => `${prev || ''} Google Maps API key is missing.`);
+                setMapUrl("https://picsum.photos/seed/map-error/1200/800"); // Fallback
+                return;
+            }
+
+            let markers = `&markers=color:blue%7Clabel:Y%7C${userCoords.latitude},${userCoords.longitude}`;
+            pharmacies.slice(0, 5).forEach(p => {
+                markers += `&markers=color:red%7Clabel:P%7C${p.coords.lat},${p.coords.lng}`;
+            });
+            const newUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${userCoords.latitude},${userCoords.longitude}&zoom=14&size=1200x800&maptype=roadmap${markers}&key=${apiKey}`;
+            setMapUrl(newUrl);
+        }
 
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
@@ -91,15 +95,12 @@ export default function PharmaciesPage() {
                     fetchPharmacies(latitude, longitude);
                 },
                 (error) => {
-                    setError(`Error getting location: ${error.message}. Showing default list.`);
-                    // Fallback to a default list if location is denied
-                    setNearbyPharmacies(mockPharmacies.slice(0, 3));
+                    setError(`Error getting location: ${error.message}.`);
                     setLoading(false);
                 }
             );
         } else {
-            setError("Geolocation is not supported by your browser. Showing default list.");
-            setNearbyPharmacies(mockPharmacies.slice(0, 3));
+            setError("Geolocation is not supported by your browser.");
             setLoading(false);
         }
     }, []);
@@ -121,21 +122,23 @@ export default function PharmaciesPage() {
                         <CardHeader>
                             <CardTitle>Pharmacy Map</CardTitle>
                             <CardDescription>
-                                {loading ? "Finding your location..." : error ? "Could not determine your location." : "Showing pharmacies in your area."}
+                                {loading ? "Finding your location and nearby pharmacies..." : error ? "Could not display map." : "Showing pharmacies in your area."}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="aspect-video w-full rounded-lg overflow-hidden relative bg-muted">
                                 <Image
-                                    src="https://picsum.photos/seed/map/1200/800"
+                                    src={mapUrl}
                                     fill
                                     style={{ objectFit: 'cover' }}
                                     alt="Map of pharmacies"
                                     className="filter dark:brightness-75 dark:contrast-125"
-                                    data-ai-hint="city map"
+                                    data-ai-hint="city map pharmacies"
                                 />
                                  <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
-                                 <div className="absolute bottom-4 left-4 text-xs text-muted-foreground">Map UI is for demonstration purposes.</div>
+                                 <div className="absolute bottom-4 left-4 text-xs text-background/80 dark:text-foreground/50 p-1 bg-foreground/50 dark:bg-background/20 rounded">
+                                     Map data ©2024 Google. You are 'Y', Pharmacies are 'P'.
+                                 </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -150,7 +153,7 @@ export default function PharmaciesPage() {
                                 <div className="flex items-center justify-center p-8">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
-                            ) : error ? (
+                            ) : error && nearbyPharmacies.length === 0 ? (
                                  <div className="text-center text-sm text-muted-foreground p-4">{error}</div>
                             ) : nearbyPharmacies.length > 0 ? (
                                 nearbyPharmacies.slice(0, 3).map(pharmacy => (
@@ -179,9 +182,8 @@ export default function PharmaciesPage() {
                                         <p className="text-xs font-semibold mb-3 text-muted-foreground">Stock Availability:</p>
                                         <div className="space-y-2">
                                             {medicinesToCheck.length > 0 ? medicinesToCheck.map(medicine => {
-                                                // API doesn't provide stock, so we simulate it for now
-                                                const stockInfo = mockPharmacies[0]?.stock.find(s => s.medicineName.toLowerCase() === medicine.toLowerCase());
-                                                const isAvailable = stockInfo ? stockInfo.available : Math.random() > 0.5;
+                                                // Live stock check isn't available, so we simulate it
+                                                const isAvailable = Math.random() > 0.3; // 70% chance of being in stock
 
                                                 return (
                                                     <div key={medicine} className="flex items-center justify-between text-sm">
@@ -206,7 +208,7 @@ export default function PharmaciesPage() {
                                 </div>
                                 ))
                             ) : (
-                                <div className="text-center text-sm text-muted-foreground p-4">No pharmacies found.</div>
+                                <div className="text-center text-sm text-muted-foreground p-4">No pharmacies found near your location.</div>
                             )}
                         </CardContent>
                     </Card>
