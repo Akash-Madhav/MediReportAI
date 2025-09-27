@@ -13,7 +13,10 @@ import { mockPharmacies } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { Navigation, MapPin, Check, X, Loader2, Pill } from "lucide-react"
 import { useEffect, useState } from "react";
-import type { Pharmacy } from "@/lib/types";
+import type { Pharmacy, Prescription } from "@/lib/types";
+import { useAuth } from "@/hooks/use-auth";
+import { onValue, ref } from "firebase/database";
+import { db } from "@/lib/firebase";
 
 // Haversine formula to calculate distance between two lat/lng points
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -28,13 +31,33 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => 
     return R * c; // Distance in km
 };
 
-const medicinesToCheck = ['Metformin', 'Lisinopril', 'Atorvastatin'];
 
 export default function PharmaciesPage() {
+    const { user } = useAuth();
     const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
     const [nearbyPharmacies, setNearbyPharmacies] = useState<Pharmacy[]>([]);
+    const [medicinesToCheck, setMedicinesToCheck] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+     useEffect(() => {
+        if (!user) return;
+        
+        // Fetch user's medicines from their prescriptions
+        const userPrescriptionsRef = ref(db, `prescriptions/${user.uid}`);
+        const unsubscribe = onValue(userPrescriptionsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const allMedicines = Object.values(data).flatMap((presc: any) => 
+                    (presc.medicines || []).map((med: any) => med.name)
+                );
+                const uniqueMedicines = [...new Set(allMedicines as string[])];
+                setMedicinesToCheck(uniqueMedicines);
+            }
+        });
+
+        return () => unsubscribe();
+    }, [user]);
 
     useEffect(() => {
         if ("geolocation" in navigator) {
@@ -141,7 +164,7 @@ export default function PharmaciesPage() {
                                     <div className="mt-4 pt-4 border-t">
                                         <p className="text-xs font-semibold mb-3 text-muted-foreground">Stock Availability:</p>
                                         <div className="space-y-2">
-                                            {medicinesToCheck.map(medicine => {
+                                            {medicinesToCheck.length > 0 ? medicinesToCheck.map(medicine => {
                                                 const stockInfo = pharmacy.stock.find(s => s.medicineName === medicine);
                                                 return (
                                                     <div key={medicine} className="flex items-center justify-between text-sm">
@@ -160,7 +183,7 @@ export default function PharmaciesPage() {
                                                         )}
                                                     </div>
                                                 )
-                                            })}
+                                            }) : <p className="text-sm text-muted-foreground">No prescribed medicines found to check.</p>}
                                         </div>
                                     </div>
                                 </div>
