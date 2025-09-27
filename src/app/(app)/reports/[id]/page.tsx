@@ -36,11 +36,11 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
     const { displayUser } = useAuth();
     const [report, setReport] = useState<Report | null>(null);
     const [loading, setLoading] = useState(true);
-    
+    const { id } = params;
+
     useEffect(() => {
-        const reportId = params.id;
-        if (reportId) {
-            const getReport = async () => {
+        if (id) {
+            const getReport = async (reportId: string) => {
                 setLoading(true);
                 const docRef = ref(db, `reports/${reportId}`);
                 const docSnap = await get(docRef);
@@ -52,12 +52,12 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
                 setLoading(false);
             }
 
-            getReport().catch(() => {
+            getReport(id).catch(() => {
                 setLoading(false);
                 notFound();
             })
         }
-    }, [params]);
+    }, [id]);
 
 
     if (loading || !report || !displayUser) return (
@@ -157,7 +157,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
                             <CardDescription>Potential conditions based on results.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {report.riskSummary.map((risk, i) => (
+                            {report.riskSummary?.map((risk, i) => (
                                 <div key={i}>
                                     <p className="font-semibold">{risk.condition} <span className="text-sm text-muted-foreground">({risk.confidence} confidence)</span></p>
                                     <p className="text-sm text-muted-foreground">{risk.note}</p>
@@ -171,7 +171,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
                             <CardDescription>Recommended next steps.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {report.suggestedFollowUps.map((followUp, i) => (
+                            {report.suggestedFollowUps?.map((followUp, i) => (
                                 <div key={i}>
                                     <p className="font-semibold">{followUp.test} <span className="text-sm text-muted-foreground">(Priority: {followUp.priority})</span></p>
                                     <p className="text-sm text-muted-foreground">{followUp.reason}</p>
