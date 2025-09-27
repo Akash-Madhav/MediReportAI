@@ -11,8 +11,6 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import mammoth from 'mammoth';
-import pdf from 'pdf-parse';
-
 
 const ExtractMedicalDataInputSchema = z.object({
   reportText: z
@@ -88,6 +86,7 @@ async function extractTextFromDataUri(dataUri: string): Promise<string> {
     const buffer = Buffer.from(base64Data, 'base64');
   
     if (mimeType === 'application/pdf') {
+      const pdf = (await import('pdf-parse')).default;
       const data = await pdf(buffer);
       return data.text;
     } else if (
