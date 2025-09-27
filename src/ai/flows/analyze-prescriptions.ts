@@ -92,6 +92,7 @@ const analyzePrescriptionFlow = prescriptionAi.defineFlow(
     outputSchema: AnalyzePrescriptionOutputSchema,
   },
   async input => {
+    // This flow now only returns the analysis, it does not save to the database.
     const {output} = await withRetry(() => analyzePrescriptionPrompt(input));
     return output!;
   }

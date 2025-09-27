@@ -110,6 +110,7 @@ const provideDecisionSupportFlow = reportAi.defineFlow(
     outputSchema: ProvideDecisionSupportOutputSchema,
   },
   async input => {
+    // This flow now only returns the analysis, it does not save to the database.
     const {output} = await withRetry(() => prompt(input));
     return output!;
   }

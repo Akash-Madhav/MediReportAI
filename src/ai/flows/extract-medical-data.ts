@@ -70,22 +70,7 @@ const extractMedicalDataPrompt = reportAi.definePrompt({
   {{/if}}
 
   Please extract the key medical data from the report, focusing on specific test results and their corresponding values, units, reference ranges, and statuses.
-  Return the extracted data in the following JSON format:
-  {
-    "extractedValues": [
-      {
-        "test": "Test Name",
-        "value": "Test Value",
-        "unit": "Unit of Measurement",
-        "referenceRange": {
-          "low": "Lower Reference Value",
-          "high": "Upper Reference Value"
-        },
-        "status": "normal" | "abnormal"
-      }
-    ]
-  }
-  Ensure that the extracted data is accurate, complete, and well-formatted.
+  Return the extracted data in the following JSON format. Do not add any extra commentary or explanation.
 `,
 });
 
@@ -159,6 +144,7 @@ const extractMedicalDataFlow = reportAi.defineFlow(
         throw new Error('Could not extract text or prepare data from the provided source.');
     }
 
+    // This flow now only returns the analysis, it does not save to the database.
     const {output} = await withRetry(() => extractMedicalDataPrompt({ reportText, reportDataUri }));
     return output!;
   }
