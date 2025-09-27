@@ -1,9 +1,9 @@
 'use client';
 
 import Link from "next/link";
-import { Atom, Mail } from "lucide-react";
+import { Atom, Mail, User as UserIcon, Shield } from "lucide-react";
 import { useState } from 'react';
-import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +20,7 @@ import { Logo } from "../icons";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -50,11 +51,15 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     );
   }
 
-export function LoginForm() {
+export function LoginForm({ variant = 'login' }: { variant?: 'login' | 'signup' }) {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('patient');
   const router = useRouter();
   const { toast } = useToast();
+
+  const isLogin = variant === 'login';
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
@@ -71,17 +76,23 @@ export function LoginForm() {
     }
   };
 
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+        // In a real app, you'd also save the role to Firestore or custom claims.
+      }
       router.push('/dashboard');
-    } catch (error) {
-      console.error("Error during email sign-in:", error);
+    } catch (error: any) {
+      console.error(`Error during ${isLogin ? 'email sign-in' : 'email sign-up'}:`, error);
       toast({
         variant: "destructive",
-        title: "Sign-in Failed",
-        description: "Invalid email or password. Please try again.",
+        title: `${isLogin ? 'Sign-in' : 'Sign-up'} Failed`,
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     }
   };
@@ -93,24 +104,57 @@ export function LoginForm() {
         <div className="flex justify-center items-center mb-4">
             <Logo className="h-12 w-12" />
         </div>
-        <CardTitle className="font-headline text-2xl">MediReportAI</CardTitle>
+        <CardTitle className="font-headline text-2xl">{isLogin ? 'MediReportAI' : 'Create an Account'}</CardTitle>
         <CardDescription>
-          Sign in to access your health dashboard.
+          {isLogin ? 'Sign in to access your health dashboard.' : 'Enter your details to get started.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <form onSubmit={handleEmailSignIn} className="grid gap-4">
+        <form onSubmit={handleEmailAuth} className="grid gap-4">
+            {!isLogin && (
+              <div className="grid gap-1">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input id="name" type="text" placeholder="Jane Doe" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+            )}
             <div className="grid gap-1">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="grid gap-1">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
+             {!isLogin && (
+              <div className="grid gap-2">
+                <Label>I am a...</Label>
+                <RadioGroup defaultValue="patient" value={role} onValueChange={setRole} className="grid grid-cols-2 gap-4">
+                  <div>
+                    <RadioGroupItem value="patient" id="patient" className="peer sr-only" />
+                    <Label
+                      htmlFor="patient"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <UserIcon className="mb-3 h-6 w-6" />
+                      Patient
+                    </Label>
+                  </div>
+                  <div>
+                    <RadioGroupItem value="doctor" id="doctor" className="peer sr-only" />
+                    <Label
+                      htmlFor="doctor"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <Shield className="mb-3 h-6 w-6" />
+                      Doctor
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
             <Button type="submit" className="w-full">
                 <Mail className="mr-2 h-5 w-5" />
-                Sign in with Email
+                {isLogin ? 'Sign in with Email' : 'Create Account'}
             </Button>
         </form>
 
@@ -129,13 +173,25 @@ export function LoginForm() {
             Sign in with Google
         </Button>
       </CardContent>
-      <CardFooter className="flex-col gap-2 text-center text-xs text-muted-foreground">
-        <p>
-          By signing in, you agree to our Terms of Service and Privacy Policy.
-        </p>
-        <div className="flex items-center justify-center">
-        <Atom className="mr-1 h-3 w-3" /> 
-        Powered by Firebase & Google AI
+      <CardFooter className="flex-col gap-2 text-center text-sm text-muted-foreground">
+         {isLogin ? (
+            <p>
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="underline">
+                    Sign up
+                </Link>
+            </p>
+         ) : (
+            <p>
+                Already have an account?{" "}
+                <Link href="/login" className="underline">
+                    Sign in
+                </Link>
+            </p>
+         )}
+        <div className="flex items-center justify-center text-xs pt-2">
+            <Atom className="mr-1 h-3 w-3" /> 
+            Powered by Firebase & Google AI
         </div>
       </CardFooter>
     </Card>
