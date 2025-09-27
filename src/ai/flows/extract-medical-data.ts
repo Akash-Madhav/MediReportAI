@@ -100,6 +100,30 @@ async function extractTextFromDataUri(dataUri: string): Promise<string> {
     }
 }
 
+// Helper function to retry a promise-based function with exponential backoff
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  let lastError: Error | undefined;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      // Check if it's a retryable "Service Unavailable" error
+      if (error.message && (error.message.includes('Service Unavailable') || error.message.includes('503'))) {
+        if (i < retries - 1) {
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+        }
+      } else {
+        // Not a retryable error, throw immediately
+        throw error;
+      }
+    }
+  }
+  // If all retries fail, throw the last error
+  throw lastError;
+}
+
 const extractMedicalDataFlow = ai.defineFlow(
   {
     name: 'extractMedicalDataFlow',
@@ -114,7 +138,7 @@ const extractMedicalDataFlow = ai.defineFlow(
         const mimeType = input.reportDataUri.split(':')[1].split(';')[0];
         if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
             reportText = await extractTextFromDataUri(input.reportDataUri);
-            // We've extracted the text, so we don't need to send the data URI
+            // We've extracted the text, so we don't need to send the data URI to the model
             reportDataUri = undefined;
         } else if (mimeType !== 'application/pdf') {
              throw new Error(`Unsupported file type: ${mimeType}. Please upload a PDF or DOCX.`);
@@ -124,8 +148,8 @@ const extractMedicalDataFlow = ai.defineFlow(
     if (!reportText && !reportDataUri) {
         throw new Error('No report content provided. Please either paste text or upload a file.');
     }
-
-    const {output} = await extractMedicalDataPrompt({ reportText, reportDataUri });
+    
+    const {output} = await withRetry(() => extractMedicalDataPrompt({ reportText, reportDataUri }));
     return output!;
   }
 );
