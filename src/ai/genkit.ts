@@ -11,10 +11,6 @@ export const prescriptionAi = genkit({
     model: 'googleai/gemini-2.5-flash',
 });
 
-export const chatAi = genkit({
-    plugins: [googleAI({apiKey: process.env.GEMINI_API_KEY})],
-    model: 'googleai/gemini-2.5-flash',
-});
 
 
 // Default ai instance for components that may not have a specific key
