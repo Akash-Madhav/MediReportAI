@@ -7,9 +7,9 @@ export type User = {
   locale?: string;
   pushToken?: string;
   profile?: {
-    dob: string;
-    sex: 'male' | 'female' | 'other';
-    contact: string;
+    dob?: string;
+    sex?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    contact?: string;
   };
 };
 
