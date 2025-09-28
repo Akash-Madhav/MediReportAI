@@ -65,7 +65,6 @@ export function Header() {
     { href: '/reports', icon: FileText, label: 'Reports', badge: reportCount },
     { href: '/prescriptions', icon: ClipboardType, label: 'Prescriptions', badge: prescriptionCount },
     { href: '/pharmacies', icon: Map, label: 'Find Pharmacies' },
-    { href: '/settings', icon: Settings, label: 'Settings' },
   ];
 
   return (
@@ -108,6 +107,13 @@ export function Header() {
                 )}
               </Link>
             ))}
+            <Link
+                href='/settings'
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Settings className="h-5 w-5" />
+                Settings
+              </Link>
           </nav>
         </SheetContent>
       </Sheet>

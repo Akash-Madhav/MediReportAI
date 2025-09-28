@@ -85,16 +85,6 @@ export function Sidebar() {
                 )}
               </Link>
             ))}
-             <Link
-                href='/settings'
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-foreground/70 transition-all hover:text-foreground hover:bg-muted',
-                  (pathname === '/settings' || pathname.startsWith('/settings')) && 'bg-muted text-primary font-semibold'
-                )}
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </Link>
           </nav>
         </div>
         <div className="mt-auto p-4">
