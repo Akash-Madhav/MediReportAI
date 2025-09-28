@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import type { Reminder } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
-import { ref, onValue, update } from "firebase/database";
+import { ref, onValue, update, query, orderByChild } from "firebase/database";
 import { db } from "@/lib/firebase";
 
 export function Reminders() {
@@ -21,7 +21,8 @@ export function Reminders() {
   useEffect(() => {
     if (!user) return;
     
-    const remindersRef = ref(db, `reminders/${user.uid}`);
+    // Order by medicine name to group them visually
+    const remindersRef = query(ref(db, `reminders/${user.uid}`), orderByChild('medicineName'));
     const unsubscribe = onValue(remindersRef, (snapshot) => {
       const data = snapshot.val();
       const remindersList: Reminder[] = [];
@@ -52,7 +53,7 @@ export function Reminders() {
       </CardHeader>
       <CardContent className="grid gap-4">
         {reminders.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground p-4">No medication reminders set up yet.</p>
+          <p className="text-center text-sm text-muted-foreground p-4">No medication reminders found. Upload a prescription to get started.</p>
         ) : (
           reminders.map((reminder) => (
             <div key={reminder.id} className="flex items-center space-x-4 rounded-md border p-4">
