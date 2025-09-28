@@ -80,7 +80,7 @@ export type HealthMetric = {
 export type Reminder = {
   id:string;
   patientId: string;
-  prescriptionId: string; // Link back to the source prescription
+  prescriptionId?: string; // Link back to the source prescription
   medicineName: string;
   time: string; // e.g., "08:00"
   recurrence: string;

@@ -22,7 +22,7 @@ export function Reminders() {
     if (!user) return;
     
     // Order by medicine name to group them visually
-    const remindersRef = query(ref(db, `reminders/${user.uid}`), orderByChild('medicineName'));
+    const remindersRef = query(ref(db, `reminders/${user.uid}`), orderByChild('time'));
     const unsubscribe = onValue(remindersRef, (snapshot) => {
       const data = snapshot.val();
       const remindersList: Reminder[] = [];
