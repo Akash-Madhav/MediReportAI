@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
-import {ArrowLeft, Download, Share2} from 'lucide-react';
+import {ArrowLeft, Download, Share2, Loader2} from 'lucide-react';
 import Link from 'next/link';
 import {format, parseISO} from 'date-fns';
 import {
@@ -22,11 +22,14 @@ import {
 } from '@/components/ui/table';
 import {Badge} from '@/components/ui/badge';
 import {useAuth} from '@/hooks/use-auth';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {ref, get} from 'firebase/database';
 import {db} from '@/lib/firebase';
 import type {Report} from '@/lib/types';
 import {Skeleton} from '@/components/ui/skeleton';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { useToast } from '@/hooks/use-toast';
 
 const statusVariantMap: {
   [key: string]: 'default' | 'secondary' | 'destructive' | 'outline';
@@ -47,8 +50,11 @@ interface ReportDetailContentProps {
 
 export default function ReportDetailContent({id}: ReportDetailContentProps) {
   const {user, displayUser} = useAuth();
+  const { toast } = useToast();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -68,6 +74,50 @@ export default function ReportDetailContent({id}: ReportDetailContentProps) {
 
     fetchReport();
   }, [id, user]);
+
+  const handleDownloadPdf = async () => {
+    if (!contentRef.current || !report) return;
+    setIsDownloading(true);
+    try {
+        const canvas = await html2canvas(contentRef.current, {
+            scale: 2, // Higher scale for better quality
+            useCORS: true, 
+            logging: false,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = imgWidth / imgHeight;
+
+        let finalImgWidth = pdfWidth;
+        let finalImgHeight = pdfWidth / ratio;
+        
+        // This is a simplified version, for very long content, a multi-page solution is needed
+        if (finalImgHeight > pdfHeight) {
+            finalImgHeight = pdfHeight;
+            finalImgWidth = pdfHeight * ratio;
+        }
+        
+        const x = (pdfWidth - finalImgWidth) / 2;
+
+        pdf.addImage(imgData, 'PNG', x, 10, finalImgWidth, finalImgHeight);
+        pdf.save(`${report.name.replace(/ /g, "_")}_analysis.pdf`);
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({
+            variant: "destructive",
+            title: "Download Failed",
+            description: "Could not generate the PDF. Please try again."
+        });
+    } finally {
+        setIsDownloading(false);
+    }
+  };
 
   if (loading || !report || !displayUser)
     return (
@@ -116,121 +166,122 @@ export default function ReportDetailContent({id}: ReportDetailContentProps) {
             <Share2 className="mr-2 h-4 w-4" />
             Share
           </Button>
-          <Button>
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
+          <Button onClick={handleDownloadPdf} disabled={isDownloading}>
+              {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              {isDownloading ? 'Downloading...' : 'Download PDF'}
           </Button>
         </div>
       </div>
-
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Extracted Lab Results</CardTitle>
-              <CardDescription>
-                Key data points identified by the AI from your report.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Test</TableHead>
-                    <TableHead>Value</TableHead>
-                    <TableHead>Reference Range</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report.extractedValues.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{item.test}</TableCell>
-                      <TableCell>
-                        {item.value} {item.unit}
-                      </TableCell>
-                      <TableCell>
-                        {item.referenceRange?.low && item.referenceRange?.high
-                          ? `${item.referenceRange.low} - ${item.referenceRange.high}`
-                          : item.referenceRange?.low
-                            ? `> ${item.referenceRange.low}`
-                            : item.referenceRange?.high
-                              ? `< ${item.referenceRange.high}`
-                              : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        {item.status && (
-                          <Badge
-                            variant={statusVariantMap[item.status]}
-                            className={statusColorMap[item.status]}
-                          >
-                            {item.status}
-                          </Badge>
-                        )}
-                      </TableCell>
+      <div ref={contentRef} className="flex flex-col gap-8 bg-background p-4 rounded-lg">
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Extracted Lab Results</CardTitle>
+                <CardDescription>
+                  Key data points identified by the AI from your report.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Test</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Reference Range</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {report.extractedValues.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{item.test}</TableCell>
+                        <TableCell>
+                          {item.value} {item.unit}
+                        </TableCell>
+                        <TableCell>
+                          {item.referenceRange?.low && item.referenceRange?.high
+                            ? `${item.referenceRange.low} - ${item.referenceRange.high}`
+                            : item.referenceRange?.low
+                              ? `> ${item.referenceRange.low}`
+                              : item.referenceRange?.high
+                                ? `< ${item.referenceRange.high}`
+                                : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {item.status && (
+                            <Badge
+                              variant={statusVariantMap[item.status]}
+                              className={statusColorMap[item.status]}
+                            >
+                              {item.status}
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="md:col-span-1 flex flex-col gap-8">
+            <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900">
+              <CardHeader>
+                <CardTitle>AI Risk Summary</CardTitle>
+                <CardDescription>
+                  Potential conditions based on results.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {report.riskSummary.map((risk, i) => (
+                  <div key={i}>
+                    <p className="font-semibold">
+                      {risk.condition}{' '}
+                      <span className="text-sm text-muted-foreground">
+                        ({risk.confidence} confidence)
+                      </span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">{risk.note}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Suggested Follow-ups</CardTitle>
+                <CardDescription>Recommended next steps.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {report.suggestedFollowUps.map((followUp, i) => (
+                  <div key={i}>
+                    <p className="font-semibold">
+                      {followUp.test}{' '}
+                      <span className="text-sm text-muted-foreground">
+                        (Priority: {followUp.priority})
+                      </span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {followUp.reason}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-        <div className="md:col-span-1 flex flex-col gap-8">
-          <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900">
-            <CardHeader>
-              <CardTitle>AI Risk Summary</CardTitle>
-              <CardDescription>
-                Potential conditions based on results.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {report.riskSummary.map((risk, i) => (
-                <div key={i}>
-                  <p className="font-semibold">
-                    {risk.condition}{' '}
-                    <span className="text-sm text-muted-foreground">
-                      ({risk.confidence} confidence)
-                    </span>
-                  </p>
-                  <p className="text-sm text-muted-foreground">{risk.note}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Suggested Follow-ups</CardTitle>
-              <CardDescription>Recommended next steps.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {report.suggestedFollowUps.map((followUp, i) => (
-                <div key={i}>
-                  <p className="font-semibold">
-                    {followUp.test}{' '}
-                    <span className="text-sm text-muted-foreground">
-                      (Priority: {followUp.priority})
-                    </span>
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {followUp.reason}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Patient-Friendly Explanation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-foreground/80 leading-relaxed">
-            {report.patientExplanation}
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Patient-Friendly Explanation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-foreground/80 leading-relaxed">
+              {report.patientExplanation}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

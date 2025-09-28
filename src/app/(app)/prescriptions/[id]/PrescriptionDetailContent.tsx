@@ -8,19 +8,21 @@ import {
     CardTitle,
   } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill, ExternalLink, BellPlus } from "lucide-react";
+import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill, ExternalLink, BellPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { ref, get, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 import type { Prescription, Reminder } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { createReminder } from "@/ai/flows/create-reminder";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 
 interface PrescriptionDetailContentProps {
@@ -34,6 +36,9 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreatingReminder, setIsCreatingReminder] = useState<string | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+
 
      useEffect(() => {
         if (!id || !user) return;
@@ -92,6 +97,53 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
             setIsCreatingReminder(null);
         }
     };
+    
+    const handleDownloadPdf = async () => {
+        if (!contentRef.current || !presc) return;
+        setIsDownloading(true);
+        try {
+            const canvas = await html2canvas(contentRef.current, {
+                scale: 2, // Higher scale for better quality
+                useCORS: true, 
+                logging: false,
+            });
+            const imgData = canvas.toDataURL('image/png');
+            
+            // A4 dimensions in mm: 210 x 297
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = imgWidth / imgHeight;
+
+            let finalImgWidth = pdfWidth;
+            let finalImgHeight = pdfWidth / ratio;
+            
+            // If the height is still too large for one page, we'll need to split it
+            // This is a simplified version, for very long content, a multi-page solution is needed
+            if (finalImgHeight > pdfHeight) {
+                finalImgHeight = pdfHeight;
+                finalImgWidth = pdfHeight * ratio;
+            }
+            
+            const x = (pdfWidth - finalImgWidth) / 2;
+
+            pdf.addImage(imgData, 'PNG', x, 10, finalImgWidth, finalImgHeight);
+            pdf.save(`${presc.name.replace(/ /g, "_")}_analysis.pdf`);
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            toast({
+                variant: "destructive",
+                title: "Download Failed",
+                description: "Could not generate the PDF. Please try again."
+            });
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
 
 
     if (loading || !presc || !displayUser) return (
@@ -135,109 +187,114 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline"><Share2 className="mr-2 h-4 w-4"/>Share</Button>
-                    <Button><Download className="mr-2 h-4 w-4" />Download PDF</Button>
-                </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8 items-start">
-                <div className="md:col-span-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Extracted Medications</CardTitle>
-                        <CardDescription>Medicines identified by the AI from your prescription.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Medicine</TableHead>
-                                    <TableHead>Dosage</TableHead>
-                                    <TableHead>Frequency</TableHead>
-                                    <TableHead>Reason for Use</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {presc.medicines.map((med, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell className="font-medium flex items-center gap-2"><Pill className="h-4 w-4 text-primary"/>{med.name}</TableCell>
-                                        <TableCell>{med.dosage}</TableCell>
-                                        <TableCell>{med.frequency}</TableCell>
-                                        <TableCell>{med.reason}</TableCell>
-                                        <TableCell>
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm"
-                                                onClick={() => handleAddReminder(med.name)}
-                                                disabled={existingReminderMedicineNames.has(med.name) || isCreatingReminder === med.name}
-                                            >
-                                                <BellPlus className="mr-2 h-4 w-4" />
-                                                {existingReminderMedicineNames.has(med.name) ? 'Reminder Set' : 'Add Reminder'}
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-                </div>
-                <div className="md:col-span-1 flex flex-col gap-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Drug Interaction Check</CardTitle>
-                            <CardDescription>Potential interactions found.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {presc.interactions && presc.interactions.length > 0 ? (
-                                presc.interactions.map((interaction, i) => (
-                                    <Alert key={i} variant="destructive">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertTitle>
-                                            {interaction.drugA} & {interaction.drugB}
-                                        </AlertTitle>
-                                        <AlertDescription>
-                                            <span className="capitalize font-semibold">[{interaction.severity} Risk]</span> {interaction.message}
-                                        </AlertDescription>
-                                    </Alert>
-                                ))
-                            ) : (
-                                <Alert className="border-green-300 dark:border-green-800">
-                                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                    <AlertTitle>No Interactions Found</AlertTitle>
-                                    <AlertDescription>
-                                        No potential drug interactions were found among the prescribed medications.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                        </CardContent>
-                    </Card>
+                    <Button onClick={handleDownloadPdf} disabled={isDownloading}>
+                        {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        {isDownloading ? 'Downloading...' : 'Download PDF'}
+                    </Button>
                 </div>
             </div>
             
-            <Card>
-                <CardHeader>
-                    <CardTitle>Product Place Order Suggestion</CardTitle>
-                    <CardDescription>Find your prescribed medication from online pharmacies. Prices may vary.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {presc.medicines.map((med, index) => (
-                        <div key={index} className="p-4 border rounded-lg">
-                            <h3 className="font-semibold flex items-center gap-2 mb-3">
-                                <Pill className="h-4 w-4 text-primary"/>
-                                {med.name}
-                            </h3>
-                            <div className="flex flex-wrap gap-2">
-                                <Button asChild variant="outline" size="sm">
-                                    <a href={`https://www.apollopharmacy.in/search-medicines/${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
-                                        Search Apollo <ExternalLink className="ml-2 h-3 w-3"/>
-                                    </a>
-                                </Button>
+            <div ref={contentRef} className="flex flex-col gap-8 bg-background p-4 rounded-lg">
+                <div className="grid md:grid-cols-3 gap-8 items-start">
+                    <div className="md:col-span-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Extracted Medications</CardTitle>
+                            <CardDescription>Medicines identified by the AI from your prescription.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Medicine</TableHead>
+                                        <TableHead>Dosage</TableHead>
+                                        <TableHead>Frequency</TableHead>
+                                        <TableHead>Reason for Use</TableHead>
+                                        <TableHead>Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {presc.medicines.map((med, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell className="font-medium flex items-center gap-2"><Pill className="h-4 w-4 text-primary"/>{med.name}</TableCell>
+                                            <TableCell>{med.dosage}</TableCell>
+                                            <TableCell>{med.frequency}</TableCell>
+                                            <TableCell>{med.reason}</TableCell>
+                                            <TableCell>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    onClick={() => handleAddReminder(med.name)}
+                                                    disabled={existingReminderMedicineNames.has(med.name) || isCreatingReminder === med.name}
+                                                >
+                                                    <BellPlus className="mr-2 h-4 w-4" />
+                                                    {existingReminderMedicineNames.has(med.name) ? 'Reminder Set' : 'Add Reminder'}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                    </div>
+                    <div className="md:col-span-1 flex flex-col gap-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Drug Interaction Check</CardTitle>
+                                <CardDescription>Potential interactions found.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {presc.interactions && presc.interactions.length > 0 ? (
+                                    presc.interactions.map((interaction, i) => (
+                                        <Alert key={i} variant="destructive">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <AlertTitle>
+                                                {interaction.drugA} & {interaction.drugB}
+                                            </AlertTitle>
+                                            <AlertDescription>
+                                                <span className="capitalize font-semibold">[{interaction.severity} Risk]</span> {interaction.message}
+                                            </AlertDescription>
+                                        </Alert>
+                                    ))
+                                ) : (
+                                    <Alert className="border-green-300 dark:border-green-800">
+                                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                        <AlertTitle>No Interactions Found</AlertTitle>
+                                        <AlertDescription>
+                                            No potential drug interactions were found among the prescribed medications.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+                
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Product Place Order Suggestion</CardTitle>
+                        <CardDescription>Find your prescribed medication from online pharmacies. Prices may vary.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {presc.medicines.map((med, index) => (
+                            <div key={index} className="p-4 border rounded-lg">
+                                <h3 className="font-semibold flex items-center gap-2 mb-3">
+                                    <Pill className="h-4 w-4 text-primary"/>
+                                    {med.name}
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button asChild variant="outline" size="sm">
+                                        <a href={`https://www.apollopharmacy.in/search-medicines/${encodeURIComponent(med.name)}`} target="_blank" rel="noopener noreferrer">
+                                            Search Apollo <ExternalLink className="ml-2 h-3 w-3"/>
+                                        </a>
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
+                        ))}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     )
 }
