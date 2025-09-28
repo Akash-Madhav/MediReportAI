@@ -5,26 +5,35 @@ import {
     CardHeader,
     CardTitle,
   } from "@/components/ui/card"
-import { Activity, Syringe, Users } from "lucide-react"
+import { Activity, Syringe, Users, CalendarDays } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
-import { ref, query, orderByChild, equalTo, limitToLast, onValue } from "firebase/database";
+import { ref, onValue, query, orderByChild, equalTo, limitToLast } from "firebase/database";
 import { db } from "@/lib/firebase";
-import type { Report, Prescription } from "@/lib/types";
+import type { Report, Prescription, User } from "@/lib/types";
+import { format } from "date-fns";
   
-  export function OverviewCards() {
+interface Appointment {
+    id: string;
+    doctorName: string;
+    date: string;
+    time: string;
+}
+
+export function OverviewCards() {
     const { user } = useAuth();
     const [latestReport, setLatestReport] = useState<Report | null>(null);
     const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
+    const [doctor, setDoctor] = useState<User | null>(null);
+    const [appointment, setAppointment] = useState<Appointment | null>(null);
 
     useEffect(() => {
         if (!user) return;
         
         // Fetch latest report
         const reportsQuery = query(
-            ref(db, "reports"),
-            orderByChild("patientId"),
-            equalTo(user.uid),
+            ref(db, `reports/${user.uid}`),
+            orderByChild("uploadedAt"),
             limitToLast(1)
         );
         const unsubscribeReports = onValue(reportsQuery, (snapshot) => {
@@ -37,10 +46,9 @@ import type { Report, Prescription } from "@/lib/types";
 
         // Fetch active prescriptions (for simplicity, let's take latest 2)
          const prescriptionsQuery = query(
-            ref(db, "prescriptions"),
-            orderByChild("patientId"),
-            equalTo(user.uid),
-            limitToLast(2) // This is a simplification
+            ref(db, `prescriptions/${user.uid}`),
+            orderByChild("uploadedAt"),
+            limitToLast(2)
         );
         const unsubscribePrescriptions = onValue(prescriptionsQuery, (snapshot) => {
              const prescData: Prescription[] = [];
@@ -50,12 +58,35 @@ import type { Report, Prescription } from "@/lib/types";
                     prescData.push({ id: key, ...data[key] });
                 });
              }
-            setActivePrescriptions(prescData);
+            setActivePrescriptions(prescData.reverse()); // show latest first
         });
+
+        // Fetch first doctor
+        const doctorsQuery = query(ref(db, `doctors/${user.uid}`), limitToLast(1));
+        const unsubscribeDoctors = onValue(doctorsQuery, (snapshot) => {
+            if(snapshot.exists()){
+                const data = snapshot.val();
+                const docId = Object.keys(data)[0];
+                setDoctor(data[docId]);
+            }
+        });
+        
+        // Fetch next appointment
+        const appointmentsQuery = query(ref(db, `appointments/${user.uid}`), orderByChild('date'), limitToLast(1));
+        const unsubscribeAppointments = onValue(appointmentsQuery, (snapshot) => {
+            if(snapshot.exists()) {
+                const data = snapshot.val();
+                const appId = Object.keys(data)[0];
+                setAppointment({ id: appId, ...data[appId]});
+            }
+        });
+
 
         return () => {
             unsubscribeReports();
             unsubscribePrescriptions();
+            unsubscribeDoctors();
+            unsubscribeAppointments();
         }
 
     }, [user]);
@@ -99,8 +130,8 @@ import type { Report, Prescription } from "@/lib/types";
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1</div>
-                <p className="text-xs text-muted-foreground">Dr. Emily Carter</p>
+                <div className="text-2xl font-bold">{doctor ? '1' : '0'}</div>
+                <p className="text-xs text-muted-foreground">{doctor ? doctor.displayName : 'No doctors linked'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -108,25 +139,12 @@ import type { Report, Prescription } from "@/lib/types";
                     <CardTitle className="text-sm font-medium">
                         Upcoming Appointment
                     </CardTitle>
-                    <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    className="h-4 w-4 text-muted-foreground"
-                    >
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">Nov 15</div>
+                    <div className="text-2xl font-bold">{appointment ? format(new Date(appointment.date), "MMM d") : 'None'}</div>
                     <p className="text-xs text-muted-foreground">
-                        at 10:30 AM with Dr. Carter
+                        {appointment ? `at ${appointment.time} with ${appointment.doctorName}`: 'No upcoming appointments'}
                     </p>
                 </CardContent>
             </Card>

@@ -10,6 +10,7 @@ import {
   Settings,
   Bell,
   Stethoscope,
+  MessageCircle,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { cn } from '@/lib/utils';

@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Map,
   Menu,
+  MessageCircle,
   Search,
   Settings,
 } from "lucide-react"

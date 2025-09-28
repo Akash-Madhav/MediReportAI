@@ -19,6 +19,7 @@ import { db } from "@/lib/firebase";
 import { Loader2, UploadCloud, CheckCircle, AlertTriangle, Pill } from "lucide-react";
 import Image from "next/image";
 import { Checkbox } from "../ui/checkbox";
+import type { Medicine } from "@/lib/types";
 
 type DialogStep = 'upload' | 'analyzing' | 'results';
 
@@ -44,6 +45,38 @@ const readFileAsDataURL = (file: File): Promise<string> => {
         };
         reader.readAsDataURL(file);
     });
+};
+
+const createRemindersFromMedicines = async (medicines: Medicine[], patientId: string, prescriptionId: string) => {
+    const remindersRef = ref(db, `reminders/${patientId}`);
+    
+    for (const medicine of medicines) {
+        const frequency = medicine.frequency.toLowerCase();
+        let times: string[] = [];
+        let recurrence = "Daily";
+
+        if (frequency.includes('once daily') || frequency.includes('every day')) {
+            times = ['09:00'];
+        } else if (frequency.includes('twice daily')) {
+            times = ['09:00', '21:00'];
+        } else if (frequency.includes('three times daily')) {
+            times = ['09:00', '15:00', '21:00'];
+        } else {
+            continue; // Skip if it's not a daily frequency we can parse
+        }
+
+        for (const time of times) {
+            const newReminderRef = push(remindersRef);
+            await set(newReminderRef, {
+                patientId,
+                prescriptionId,
+                medicineName: medicine.name,
+                time,
+                recurrence,
+                enabled: true,
+            });
+        }
+    }
 };
 
 export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescriptionDialogProps) {
@@ -151,10 +184,15 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                     storagePath: 'simulated_path/' + file?.name,
                     ...analysisResult, // Save the entire analysis result
                 });
+
+                // Create reminders after saving prescription
+                if (analysisResult.medicines.length > 0) {
+                    await createRemindersFromMedicines(analysisResult.medicines, user.uid, newPrescriptionRef.key!);
+                }
                 
                 toast({
                     title: 'Analysis Saved',
-                    description: 'Your prescription analysis has been saved to your records.',
+                    description: 'Your prescription and reminders have been saved.',
                 });
             } catch (dbError) {
                 console.error("Failed to save to database:", dbError);
@@ -199,7 +237,7 @@ export function UploadPrescriptionDialog({ open, onOpenChange }: UploadPrescript
                         <div className="flex items-center space-x-2 p-4 border rounded-md">
                             <Checkbox id="save-db" checked={saveToDb} onCheckedChange={(checked) => setSaveToDb(Boolean(checked))} />
                             <Label htmlFor="save-db" className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                Save this analysis to my account.
+                                Save analysis and create reminders.
                             </Label>
                         </div>
                     </div>

@@ -12,7 +12,7 @@ import Link from "next/link"
 import { format, parseISO } from "date-fns"
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
-import { ref, query, orderByChild, equalTo, limitToLast, onValue } from "firebase/database";
+import { ref, query, orderByChild, onValue, limitToLast } from "firebase/database";
 import { db } from "@/lib/firebase";
 import type { Report, Prescription } from "@/lib/types";
 
@@ -26,42 +26,43 @@ export function RecentUploads() {
         if (!user) return;
 
         const reportsQuery = query(
-            ref(db, "reports"),
-            orderByChild("patientId"),
-            equalTo(user.uid),
-            limitToLast(2)
+            ref(db, `reports/${user.uid}`),
+            orderByChild("uploadedAt"),
+            limitToLast(3)
         );
         const prescriptionsQuery = query(
-            ref(db, "prescriptions"),
-            orderByChild("patientId"),
-            equalTo(user.uid),
-            limitToLast(2)
+            ref(db, `prescriptions/${user.uid}`),
+            orderByChild("uploadedAt"),
+            limitToLast(3)
         );
 
-        let combinedUploads: Upload[] = [];
+        let reports: Upload[] = [];
+        let prescriptions: Upload[] = [];
+
+        const combineAndSort = () => {
+            const combined = [...reports, ...prescriptions];
+            combined.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+            setRecentUploads(combined.slice(0, 3));
+        }
 
         const unsubscribeReports = onValue(reportsQuery, (snapshot) => {
-            const reports: Upload[] = [];
+            const reportData: Upload[] = [];
             if(snapshot.exists()) {
                 const data = snapshot.val();
-                Object.keys(data).forEach(key => reports.push({ ...data[key], id: key, type: 'report' } as Upload));
+                Object.keys(data).forEach(key => reportData.push({ ...data[key], id: key, type: 'report' } as Upload));
             }
-            // Combine and sort
-            combinedUploads = [...reports, ...combinedUploads.filter(u => u.type !== 'report')];
-            combinedUploads.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-            setRecentUploads(combinedUploads.slice(0, 3));
+            reports = reportData;
+            combineAndSort();
         });
 
         const unsubscribePrescriptions = onValue(prescriptionsQuery, (snapshot) => {
-            const prescriptions: Upload[] = [];
+            const prescriptionData: Upload[] = [];
             if(snapshot.exists()) {
                 const data = snapshot.val();
-                 Object.keys(data).forEach(key => prescriptions.push({ ...data[key], id: key, type: 'prescription' } as Upload));
+                 Object.keys(data).forEach(key => prescriptionData.push({ ...data[key], id: key, type: 'prescription' } as Upload));
             }
-            // Combine and sort
-            combinedUploads = [...prescriptions, ...combinedUploads.filter(u => u.type !== 'prescription')];
-            combinedUploads.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-            setRecentUploads(combinedUploads.slice(0, 3));
+            prescriptions = prescriptionData;
+            combineAndSort();
         });
 
 

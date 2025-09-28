@@ -45,19 +45,21 @@ export type Report = {
   patientExplanation: string;
 };
 
+export type Medicine = {
+  name: string;
+  dosage: string;
+  frequency: string;
+  route: string;
+  reason: string;
+};
+
 export type Prescription = {
   id: string;
   name: string;
   patientId: string;
   storagePath: string;
   uploadedAt: string; // ISO date string
-  medicines: {
-    name: string;
-    dosage: string;
-    frequency: string;
-    route: string;
-    reason: string;
-  }[];
+  medicines: Medicine[];
   interactions: {
     drugA: string;
     drugB: string;
@@ -78,6 +80,7 @@ export type HealthMetric = {
 export type Reminder = {
   id:string;
   patientId: string;
+  prescriptionId?: string; // Link back to the source prescription
   medicineName: string;
   time: string; // e.g., "08:00"
   recurrence: string;
@@ -92,3 +95,12 @@ export type Pharmacy = {
     coords: { lat: number; lng: number };
     stock?: { medicineName: string; available: boolean; lastUpdated: string }[];
 };
+
+export type Appointment = {
+    id: string;
+    patientId: string;
+    doctorName: string;
+    date: string; // ISO date string
+    time: string; // e.g. "10:30 AM"
+    status: 'upcoming' | 'completed' | 'cancelled';
+}

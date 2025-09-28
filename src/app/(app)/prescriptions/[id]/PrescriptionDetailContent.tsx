@@ -8,17 +8,20 @@ import {
     CardTitle,
   } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill, ExternalLink } from "lucide-react";
+import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill, ExternalLink, BellPlus } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth";
-import React, { useEffect, useState } from "react";
-import { ref, get } from "firebase/database";
+import React, { useEffect, useState, useMemo } from "react";
+import { ref, get, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
-import type { Prescription } from "@/lib/types";
+import type { Prescription, Reminder } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { createReminder } from "@/ai/flows/create-reminder";
+
 
 interface PrescriptionDetailContentProps {
     id: string;
@@ -26,14 +29,17 @@ interface PrescriptionDetailContentProps {
 
 export default function PrescriptionDetailContent({ id }: PrescriptionDetailContentProps) {
     const { user, displayUser } = useAuth();
+    const { toast } = useToast();
     const [presc, setPresc] = useState<Prescription | null>(null);
+    const [reminders, setReminders] = useState<Reminder[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isCreatingReminder, setIsCreatingReminder] = useState<string | null>(null);
 
-    useEffect(() => {
+     useEffect(() => {
         if (!id || !user) return;
+
         const fetchPrescription = async () => {
             setLoading(true);
-            // Fetch from the user-specific path
             const docRef = ref(db, `prescriptions/${user.uid}/${id}`);
             const docSnap = await get(docRef);
 
@@ -46,7 +52,46 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
         };
 
         fetchPrescription();
+
+        // Listen for reminders
+        const remindersRef = ref(db, `reminders/${user.uid}`);
+        const unsubscribe = onValue(remindersRef, (snapshot) => {
+            const data = snapshot.val();
+            const remindersList: Reminder[] = data ? Object.values(data) : [];
+            setReminders(remindersList);
+        });
+
+        return () => unsubscribe();
     }, [id, user]);
+    
+    const existingReminderMedicineNames = useMemo(() => {
+        return new Set(reminders.map(r => r.medicineName));
+    }, [reminders]);
+
+    const handleAddReminder = async (medicineName: string) => {
+        if (!user || !presc) return;
+        setIsCreatingReminder(medicineName);
+        try {
+            await createReminder({
+                patientId: user.uid,
+                prescriptionId: presc.id,
+                medicineName: medicineName,
+            });
+            toast({
+                title: "Reminder Created",
+                description: `A daily reminder for ${medicineName} has been set for 9:00 AM.`,
+            });
+        } catch (error) {
+            console.error("Failed to create reminder:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not create the reminder. Please try again.",
+            });
+        } finally {
+            setIsCreatingReminder(null);
+        }
+    };
 
 
     if (loading || !presc || !displayUser) return (
@@ -108,8 +153,8 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                                     <TableHead>Medicine</TableHead>
                                     <TableHead>Dosage</TableHead>
                                     <TableHead>Frequency</TableHead>
-                                    <TableHead>Route</TableHead>
                                     <TableHead>Reason for Use</TableHead>
+                                    <TableHead>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -118,8 +163,18 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                                         <TableCell className="font-medium flex items-center gap-2"><Pill className="h-4 w-4 text-primary"/>{med.name}</TableCell>
                                         <TableCell>{med.dosage}</TableCell>
                                         <TableCell>{med.frequency}</TableCell>
-                                        <TableCell>{med.route}</TableCell>
                                         <TableCell>{med.reason}</TableCell>
+                                        <TableCell>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm"
+                                                onClick={() => handleAddReminder(med.name)}
+                                                disabled={existingReminderMedicineNames.has(med.name) || isCreatingReminder === med.name}
+                                            >
+                                                <BellPlus className="mr-2 h-4 w-4" />
+                                                {existingReminderMedicineNames.has(med.name) ? 'Reminder Set' : 'Add Reminder'}
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
