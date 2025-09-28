@@ -131,10 +131,12 @@ export function UploadReportDialog({ open, onOpenChange }: UploadReportDialogPro
         if (saveToDb) {
             setStep('analyzing'); // Show spinner while saving
              try {
-                const newReportRef = push(ref(db, 'reports'));
+                const userReportsRef = ref(db, `reports/${user.uid}`);
+                const newReportRef = push(userReportsRef);
+                
                 await set(newReportRef, {
                     name: reportName,
-                    patientId: user!.uid,
+                    patientId: user.uid,
                     uploadedAt: new Date().toISOString(),
                     ...analysisResult,
                     storagePath: 'simulated_path/' + reportName.replace(/ /g, '_') 
