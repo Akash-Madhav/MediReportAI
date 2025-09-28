@@ -1,3 +1,5 @@
+
+'use client';
 import Link from "next/link"
 import {
   Bell,
@@ -28,16 +30,44 @@ import {
 } from "@/components/ui/sheet"
 import { UserNav } from "./user-nav"
 import { Logo } from "../icons"
+import { useAuth } from "@/hooks/use-auth";
+import { useState, useEffect } from "react";
+import { ref, onValue } from "firebase/database";
+import { db } from "@/lib/firebase";
 
-const navItems = [
+export function Header() {
+  const { user } = useAuth();
+  const [reportCount, setReportCount] = useState(0);
+  const [prescriptionCount, setPrescriptionCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const reportsRef = ref(db, `reports/${user.uid}`);
+    const prescriptionsRef = ref(db, `prescriptions/${user.uid}`);
+
+    const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+      setReportCount(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
+    });
+
+    const unsubscribePrescriptions = onValue(prescriptionsRef, (snapshot) => {
+      setPrescriptionCount(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
+    });
+
+    return () => {
+      unsubscribeReports();
+      unsubscribePrescriptions();
+    };
+  }, [user]);
+
+  const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/reports', icon: FileText, label: 'Reports', badge: 2 },
-    { href: '/prescriptions', icon: ClipboardType, label: 'Prescriptions', badge: 1 },
+    { href: '/reports', icon: FileText, label: 'Reports', badge: reportCount },
+    { href: '/prescriptions', icon: ClipboardType, label: 'Prescriptions', badge: prescriptionCount },
     { href: '/pharmacies', icon: Map, label: 'Find Pharmacies' },
     { href: '/settings', icon: Settings, label: 'Settings' },
   ];
 
-export function Header() {
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 sticky top-0 z-10">
       <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
@@ -71,7 +101,7 @@ export function Header() {
               >
                 <Icon className="h-5 w-5" />
                 {label}
-                {badge && (
+                {badge !== undefined && badge > 0 && (
                   <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
                     {badge}
                   </Badge>

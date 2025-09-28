@@ -10,22 +10,47 @@ import {
   Settings,
   Bell,
   Stethoscope,
-  MessageCircle,
 } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-
-const navItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/reports', icon: FileText, label: 'Reports', badge: 2 },
-  { href: '/prescriptions', icon: ClipboardType, label: 'Prescriptions', badge: 1 },
-  { href: '/pharmacies', icon: Map, label: 'Find Pharmacies' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
-];
+import { useAuth } from '@/hooks/use-auth';
+import { useState, useEffect } from 'react';
+import { ref, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const [reportCount, setReportCount] = useState(0);
+  const [prescriptionCount, setPrescriptionCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const reportsRef = ref(db, `reports/${user.uid}`);
+    const prescriptionsRef = ref(db, `prescriptions/${user.uid}`);
+
+    const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+      setReportCount(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
+    });
+
+    const unsubscribePrescriptions = onValue(prescriptionsRef, (snapshot) => {
+      setPrescriptionCount(snapshot.exists() ? Object.keys(snapshot.val()).length : 0);
+    });
+
+    return () => {
+      unsubscribeReports();
+      unsubscribePrescriptions();
+    };
+  }, [user]);
+
+  const navItems = [
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/reports', icon: FileText, label: 'Reports', badge: reportCount },
+    { href: '/prescriptions', icon: ClipboardType, label: 'Prescriptions', badge: prescriptionCount },
+    { href: '/pharmacies', icon: Map, label: 'Find Pharmacies' },
+  ];
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col border-r bg-card md:flex">
@@ -53,13 +78,23 @@ export function Sidebar() {
               >
                 <Icon className="h-4 w-4" />
                 {label}
-                {badge && (
+                {badge !== undefined && badge > 0 && (
                   <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     {badge}
                   </Badge>
                 )}
               </Link>
             ))}
+             <Link
+                href='/settings'
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-foreground/70 transition-all hover:text-foreground hover:bg-muted',
+                  (pathname === '/settings' || pathname.startsWith('/settings')) && 'bg-muted text-primary font-semibold'
+                )}
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
           </nav>
         </div>
         <div className="mt-auto p-4">
