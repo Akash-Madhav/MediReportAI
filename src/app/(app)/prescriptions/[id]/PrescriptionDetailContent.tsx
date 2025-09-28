@@ -8,7 +8,7 @@ import {
     CardTitle,
   } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, Pill, ExternalLink, BellPlus, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, AlertTriangle, CheckCircle, Pill, ExternalLink, BellPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -186,7 +186,6 @@ export default function PrescriptionDetailContent({ id }: PrescriptionDetailCont
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline"><Share2 className="mr-2 h-4 w-4"/>Share</Button>
                     <Button onClick={handleDownloadPdf} disabled={isDownloading}>
                         {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                         {isDownloading ? 'Downloading...' : 'Download PDF'}
