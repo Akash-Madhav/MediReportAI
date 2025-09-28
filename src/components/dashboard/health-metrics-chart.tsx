@@ -9,55 +9,122 @@ import {
 } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/hooks/use-auth';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ref, query, orderByChild, equalTo, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import type { Report } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+
+interface MetricDataPoint {
+    date: string; // "MMM yy"
+    value: number;
+    [key: string]: any;
+}
 
 export function HealthMetricsChart() {
   const { user } = useAuth();
-  const [chartData, setChartData] = useState<{ date: string; value: number }[]>([]);
+  const [allReports, setAllReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMetric, setSelectedMetric] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
 
     setLoading(true);
-    const reportsRef = ref(db, 'reports');
-    const userReportsQuery = query(reportsRef, orderByChild('patientId'), equalTo(user.uid));
-
-    const unsubscribe = onValue(userReportsQuery, (snapshot) => {
+    // This ref should point to the user's specific reports
+    const userReportsRef = ref(db, `reports/${user.uid}`);
+    
+    // We fetch all reports for the user once
+    const unsubscribe = onValue(userReportsRef, (snapshot) => {
       const data = snapshot.val();
-      const metrics: { date: string; value: number }[] = [];
+      const reports: Report[] = [];
       if (data) {
         Object.keys(data).forEach((key) => {
-          const report: Report = { id: key, ...data[key] };
-          const cholesterol = report.extractedValues.find(
-            (v) => v.test.toLowerCase().includes('total cholesterol')
-          );
-          if (cholesterol && typeof cholesterol.value === 'number') {
-            metrics.push({
-              date: format(parseISO(report.uploadedAt), 'MMM yy'),
-              value: cholesterol.value,
-            });
-          }
+          reports.push({ id: key, ...data[key] });
         });
       }
-      // Sort by date chronologically
-      metrics.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      setChartData(metrics);
+      setAllReports(reports);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [user]);
 
+  const { availableMetrics, chartData, unit } = useMemo(() => {
+    if (allReports.length === 0) {
+      return { availableMetrics: [], chartData: [], unit: '' };
+    }
+
+    const metricsMap: { [key: string]: { unit?: string; data: MetricDataPoint[] } } = {};
+    const uniqueMetrics = new Set<string>();
+
+    allReports.forEach(report => {
+        report.extractedValues.forEach(v => {
+            if (typeof v.value === 'number') {
+                uniqueMetrics.add(v.test);
+                if (!metricsMap[v.test]) {
+                    metricsMap[v.test] = { unit: v.unit, data: [] };
+                }
+                metricsMap[v.test].data.push({
+                    date: format(parseISO(report.uploadedAt), 'MMM yy'),
+                    value: v.value,
+                });
+            }
+        });
+    });
+
+    const metricsList = Array.from(uniqueMetrics);
+    
+    // Set default metric
+    if (!selectedMetric && metricsList.length > 0) {
+        const defaultMetric = metricsList.includes('Total Cholesterol') ? 'Total Cholesterol' : metricsList[0];
+        setSelectedMetric(defaultMetric);
+    }
+    
+    const currentMetricData = metricsMap[selectedMetric]?.data || [];
+    // Sort by date chronologically
+    currentMetricData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+
+    return {
+      availableMetrics: metricsList,
+      chartData: currentMetricData,
+      unit: metricsMap[selectedMetric]?.unit || ''
+    };
+  }, [allReports, selectedMetric]);
+  
+  // Effect to handle when selectedMetric might become invalid after data changes
+  useEffect(() => {
+    if (availableMetrics.length > 0 && !availableMetrics.includes(selectedMetric)) {
+      setSelectedMetric(availableMetrics.includes('Total Cholesterol') ? 'Total Cholesterol' : availableMetrics[0]);
+    }
+  }, [availableMetrics, selectedMetric]);
+
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Health Metrics Over Time</CardTitle>
-        <CardDescription>Total Cholesterol (mg/dL) from your reports</CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <CardTitle>Health Metrics Over Time</CardTitle>
+                <CardDescription>
+                    {selectedMetric ? `${selectedMetric} (${unit}) from your reports` : 'Select a metric to display'}
+                </CardDescription>
+            </div>
+            {!loading && availableMetrics.length > 0 && (
+                 <Select value={selectedMetric} onValueChange={setSelectedMetric}>
+                    <SelectTrigger className="w-full sm:w-[240px]">
+                        <SelectValue placeholder="Select a metric" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableMetrics.map(metric => (
+                            <SelectItem key={metric} value={metric}>{metric}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -66,7 +133,12 @@ export function HealthMetricsChart() {
             </div>
         ) : chartData.length === 0 ? (
             <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground">
-                <p>No cholesterol data found in your reports yet.</p>
+                <p>
+                    {availableMetrics.length === 0 
+                        ? 'No plottable data found in your reports yet.'
+                        : `No data found for "${selectedMetric}".`
+                    }
+                </p>
             </div>
         ) : (
             <ResponsiveContainer width="100%" height={350}>
@@ -74,18 +146,18 @@ export function HealthMetricsChart() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis
                 dataKey="date"
-                stroke="#888888"
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
                 />
                 <YAxis
-                stroke="#888888"
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `${value}`}
-                domain={['dataMin - 20', 'dataMax + 10']}
+                domain={['dataMin - 10', 'dataMax + 10']}
                 />
                 <Tooltip
                 contentStyle={{
@@ -96,7 +168,7 @@ export function HealthMetricsChart() {
                 labelStyle={{ color: "hsl(var(--foreground))" }}
                 />
                 <Legend iconType="circle" />
-                <Bar dataKey="value" name="Cholesterol" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" name={selectedMetric} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
             </ResponsiveContainer>
         )}
