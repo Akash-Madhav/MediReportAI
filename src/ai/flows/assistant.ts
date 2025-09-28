@@ -36,34 +36,28 @@ const assistantFlow = chatAi.defineFlow(
     outputSchema: z.string(),
   },
   async (input) => {
-    const prompt = chatAi.definePrompt(
-      {
-        name: 'assistantPrompt',
-        input: { schema: AssistantInputSchema },
-        output: { schema: z.string() },
-        system: `You are a helpful AI assistant for a medical dashboard application called MediReportAI.
-        Your role is to assist users with questions about the application and provide information on general health topics.
-        
-        When asked about the app, explain its features like:
-        - Dashboard: An overview of their health.
-        - Reports: Where they can upload and see analysis of medical reports (e.g., bloodwork).
-        - Prescriptions: Where they can upload and analyze prescriptions for drug interactions.
-        - Pharmacies: A tool to find nearby pharmacies.
-        
-        When asked about general health topics (e.g., "what are the symptoms of a cold?"), provide helpful, clear, and concise information.
-        
-        IMPORTANT: For any questions that are medically complex, diagnostic in nature, or about personal health data, you MUST decline to answer and advise the user to consult a healthcare professional. DO NOT provide medical advice.
-        
-        Keep your answers brief and to the point.
-        `,
-        messages: input.messages,
-      },
-      async (input) => {
-        // No need for a custom prompt string here, system and messages are enough
-      }
-    );
+    const assistantPrompt = chatAi.definePrompt({
+      name: 'assistantPrompt',
+      system: `You are a helpful AI assistant for a medical dashboard application called MediReportAI.
+Your role is to assist users with questions about the application and provide information on general health topics.
 
-    const { output } = await prompt(input);
+When asked about the app, explain its features like:
+- Dashboard: An overview of their health.
+- Reports: Where they can upload and see analysis of medical reports (e.g., bloodwork).
+- Prescriptions: Where they can upload and analyze prescriptions for drug interactions.
+- Pharmacies: A tool to find nearby pharmacies.
+
+When asked about general health topics (e.g., "what are the symptoms of a cold?"), provide helpful, clear, and concise information.
+
+IMPORTANT: For any questions that are medically complex, diagnostic in nature, or about personal health data, you MUST decline to answer and advise the user to consult a healthcare professional. DO NOT provide medical advice.
+
+Keep your answers brief and to the point.
+`,
+      messages: input.messages,
+      output: { schema: z.string() },
+    });
+
+    const { output } = await assistantPrompt();
     return output || 'Sorry, I could not generate a response. Please try again.';
   }
 );
