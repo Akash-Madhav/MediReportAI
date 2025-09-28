@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
-import {ArrowLeft, Download, Share2, Loader2} from 'lucide-react';
+import {ArrowLeft, Download, Loader2} from 'lucide-react';
 import Link from 'next/link';
 import {format, parseISO} from 'date-fns';
 import {
@@ -162,10 +162,6 @@ export default function ReportDetailContent({id}: ReportDetailContentProps) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
-          </Button>
           <Button onClick={handleDownloadPdf} disabled={isDownloading}>
               {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
               {isDownloading ? 'Downloading...' : 'Download PDF'}
