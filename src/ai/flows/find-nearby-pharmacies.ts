@@ -41,19 +41,33 @@ export async function findNearbyPharmacies(input: FindNearbyPharmaciesInput): Pr
   return findNearbyPharmaciesFlow(input);
 }
 
-const findPharmaciesPrompt = ai.definePrompt({
-    name: 'findNearbyPharmaciesPrompt',
-    input: { schema: FindNearbyPharmaciesInputSchema },
-    output: { schema: FindNearbyPharmaciesOutputSchema },
-    prompt: `You are a helpful local guide. A user is looking for pharmacies near their location.
-    
-    Their current location is latitude: {{latitude}} and longitude: {{longitude}}.
 
-    Please find a list of 10 nearby pharmacies. For each pharmacy, provide a unique ID, its name, full address, and its precise latitude and longitude coordinates.
-    
-    Return the data strictly in the required JSON format.
-    `,
-});
+// This tool simulates a call to a real Places API.
+// In a production app, this would use an HTTP client to call the Google Maps Places API.
+const getNearbyPharmaciesTool = ai.defineTool(
+    {
+        name: 'getNearbyPharmacies',
+        description: 'Get a list of nearby pharmacies based on latitude and longitude.',
+        inputSchema: z.object({
+            latitude: z.number(),
+            longitude: z.number(),
+        }),
+        outputSchema: FindNearbyPharmaciesOutputSchema,
+    },
+    async ({ latitude, longitude }) => {
+        console.log(`Simulating search for pharmacies near: ${latitude}, ${longitude}`);
+        // In a real implementation, you would call the Google Places API here.
+        // For this demo, we return mock data that resembles the API response.
+        return {
+            pharmacies: [
+                { id: 'mock1', name: 'City Central Pharmacy', address: '101 Medical Plaza, Downtown', coords: { lat: latitude + 0.01, lng: longitude - 0.01 }, distance: 1200 },
+                { id: 'mock2', name: 'Wellness Drug Store', address: '255 Health St, Suburbia', coords: { lat: latitude - 0.02, lng: longitude + 0.015 }, distance: 2500 },
+                { id: 'mock3', name: 'The Corner Apothecary', address: '8 Bleecker St, Old Town', coords: { lat: latitude + 0.005, lng: longitude + 0.005 }, distance: 800 },
+            ]
+        };
+    }
+);
+
 
 const findNearbyPharmaciesFlow = ai.defineFlow(
     {
@@ -63,11 +77,11 @@ const findNearbyPharmaciesFlow = ai.defineFlow(
     },
     async (input) => {
         try {
-            // Use Gemini to generate the pharmacy list
-            const { output } = await findPharmaciesPrompt(input);
+            // Use the structured tool instead of a generic prompt.
+            const output = await getNearbyPharmaciesTool(input);
 
             if (!output || !output.pharmacies) {
-                throw new Error('AI failed to generate pharmacy data.');
+                throw new Error('Pharmacy tool failed to return data.');
             }
             
             // Save the correctly formatted data to the database
