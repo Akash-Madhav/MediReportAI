@@ -10,13 +10,13 @@ const firebaseConfig = {
   messagingSenderId: "261763392897",
   appId: "1:261763392897:web:5029020882f6c639b13480",
   measurementId: "G-T8H52Z202K",
-  databaseURL: "https://medireportai-2c253-default-rtdb.firebaseio.com"
+  databaseURL: "https://medireportai-2c253-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-// Explicitly pass the databaseURL to getDatabase
+// Explicitly pass the databaseURL to getDatabase to ensure correct connection
 const db = getDatabase(app, firebaseConfig.databaseURL);
 
 export { app, auth, db };
