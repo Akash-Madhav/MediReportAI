@@ -3,13 +3,14 @@ import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  "projectId": "studio-7903526903-e4cdf",
-  "appId": "1:836210131551:web:621774412fc8525c8991ea",
-  "apiKey": "AIzaSyCXrqE--5kdGbS8VcOlxlOjUd7yzOq68k8",
-  "authDomain": "studio-7903526903-e4cdf.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "836210131551",
-  "databaseURL": "https://studio-7903526903-e4cdf-default-rtdb.asia-southeast1.firebasedatabase.app"
+  apiKey: "AIzaSyBqKQRg5Hn6GAzUhEVwPTlM-JwKOZ60y0U",
+  authDomain: "medireportai-2c253.firebaseapp.com",
+  projectId: "medireportai-2c253",
+  storageBucket: "medireportai-2c253.firebasestorage.app",
+  messagingSenderId: "261763392897",
+  appId: "1:261763392897:web:5029020882f6c639b13480",
+  measurementId: "G-T8H52Z202K",
+  databaseURL: "https://medireportai-2c253-default-rtdb.firebaseio.com"
 };
 
 // Initialize Firebase
