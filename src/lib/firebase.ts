@@ -16,6 +16,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const db = getDatabase(app);
+// Explicitly pass the databaseURL to getDatabase
+const db = getDatabase(app, firebaseConfig.databaseURL);
 
 export { app, auth, db };
