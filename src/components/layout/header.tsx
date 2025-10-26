@@ -34,6 +34,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
 import { ref, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
+import { ThemeToggle } from "../theme-toggle";
 
 export function Header() {
   const { user } = useAuth();
@@ -128,6 +129,7 @@ export function Header() {
             />
           </div>
         </form>
+        <ThemeToggle />
         <UserNav />
       </div>
     </header>
