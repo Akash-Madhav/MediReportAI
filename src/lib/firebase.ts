@@ -10,7 +10,7 @@ const firebaseConfig = {
   messagingSenderId: "153917471576",
   appId: "1:153917471576:web:4801742c7163e3ec46032d",
   measurementId: "G-WFPWZLW9R8",
-  databaseURL: "https://medir-a6f0a-default-rtdb.firebaseio.com"
+  databaseURL: "https://medir-a6f0a-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 // Initialize Firebase
