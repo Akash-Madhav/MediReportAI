@@ -91,7 +91,7 @@ export function OverviewCards() {
 
     }, [user]);
 
-    const abnormalResultsCount = latestReport?.extractedValues.filter(v => v.status === 'abnormal').length ?? 0;
+    const abnormalResultsCount = latestReport?.extractedValues?.filter(v => v.status === 'abnormal').length ?? 0;
     const interactionCount = activePrescriptions.reduce((acc, p) => acc + (p.interactions?.length || 0), 0);
 
     return (
