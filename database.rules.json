@@ -2,38 +2,49 @@
   "rules": {
     "users": {
       "$uid": {
-        // Allow users to read and write their own data
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid"
       }
     },
     "reports": {
       "$uid": {
-        // Allow users to read and write their own reports
         ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".write": "$uid === auth.uid",
+        ".indexOn": ["uploadedAt"]
       }
     },
     "prescriptions": {
       "$uid": {
-        // Allow users to read and write their own prescriptions
         ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".write": "$uid === auth.uid",
+        ".indexOn": ["uploadedAt"]
       }
     },
     "reminders": {
       "$uid": {
-        // Allow users to read and write their own reminders
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        ".indexOn": ["time"]
+      }
+    },
+    "nearby_pharmacies": {
+      "$uid": {
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid"
       }
     },
-    "nearby_pharmacies": {
-        "$uid": {
-          // Allow users to read and write their own pharmacy search results
-          ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid"
-        }
+    "doctors": {
+       "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "appointments": {
+       "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        ".indexOn": ["date"]
+      }
     }
   }
 }
