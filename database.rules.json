@@ -1,0 +1,39 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        // Allow users to read and write their own data
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "reports": {
+      "$uid": {
+        // Allow users to read and write their own reports
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "prescriptions": {
+      "$uid": {
+        // Allow users to read and write their own prescriptions
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "reminders": {
+      "$uid": {
+        // Allow users to read and write their own reminders
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "nearby_pharmacies": {
+        "$uid": {
+          // Allow users to read and write their own pharmacy search results
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
+        }
+    }
+  }
+}
