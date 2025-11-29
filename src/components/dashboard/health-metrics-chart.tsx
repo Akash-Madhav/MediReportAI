@@ -60,18 +60,20 @@ export function HealthMetricsChart() {
     const uniqueMetrics = new Set<string>();
 
     allReports.forEach(report => {
-        report.extractedValues.forEach(v => {
-            if (typeof v.value === 'number') {
-                uniqueMetrics.add(v.test);
-                if (!metricsMap[v.test]) {
-                    metricsMap[v.test] = { unit: v.unit, data: [] };
+        if (report.extractedValues) {
+            report.extractedValues.forEach(v => {
+                if (typeof v.value === 'number') {
+                    uniqueMetrics.add(v.test);
+                    if (!metricsMap[v.test]) {
+                        metricsMap[v.test] = { unit: v.unit, data: [] };
+                    }
+                    metricsMap[v.test].data.push({
+                        date: format(parseISO(report.uploadedAt), 'MMM yy'),
+                        value: v.value,
+                    });
                 }
-                metricsMap[v.test].data.push({
-                    date: format(parseISO(report.uploadedAt), 'MMM yy'),
-                    value: v.value,
-                });
-            }
-        });
+            });
+        }
     });
 
     const metricsList = Array.from(uniqueMetrics);
